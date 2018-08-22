@@ -107,7 +107,7 @@ classdef GD3 < handle
 			obj.xmax = Xm(1,end,1);
 			obj.ymax = Ym(end,1,1);
 			obj.zmax = Zm(1,1,end);
-			obj.BOX = [obj.xmin obj.xmax obj.ymin obj.ymax obj.zmin obj.zmax];
+			obj.BOX = gather( [obj.xmin obj.xmax obj.ymin obj.ymax obj.zmin obj.zmax] );
 			obj.PX = permute(Xm, [2 1 3]);
 			obj.PY = permute(Ym, [2 1 3]);
 			obj.PZ = permute(Zm, [2 1 3]);

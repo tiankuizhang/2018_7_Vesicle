@@ -54,9 +54,10 @@ classdef SDF3 < handle
 
 	methods
 
-		function obj = SDF3(Xm, Ym, Zm, Val)
-			obj.GD3 = SD.GD3(Xm, Ym, Zm);
+		function obj = SDF3(grid, Xm, Ym, Zm, Val)
+			obj.GD3 = grid;
 			obj.Sme_Thk = obj.GD3.Dx * 1.5;
+			obj.F = Val;
 			%obj.reinitialization(Val)
 			obj.En_Volume = obj.VolumeIntegral(1);
 			obj.Suf_Area = obj.SurfaceIntegral(1);
@@ -127,10 +128,10 @@ classdef SDF3 < handle
 			Ot_vsc = val > obj.Sme_Thk;
 			Ed_vsc = ~In_vsc & ~Ot_vsc;
 
-			obj.Dirac_Delta = zeros(obj.GD3.Size);
+			obj.Dirac_Delta = zeros(obj.GD3.Size,'gpuArray');
 			obj.Dirac_Delta(Ed_vsc) = obj.Fg_1(Ed_vsc) .* (1 + cos(pi*val(Ed_vsc)/obj.Sme_Thk)) / obj.Sme_Thk / 2;
 
-			obj.Heaviside = zeros(obj.GD3.Size);
+			obj.Heaviside = zeros(obj.GD3.Size,'gpuArray');
 			obj.Heaviside(Ot_vsc) = 1;
 			obj.Heaviside(Ed_vsc) = (1 + val(Ed_vsc)/obj.Sme_Thk + sin(pi*val(Ed_vsc)/obj.Sme_Thk)/pi ) / 2;
 
@@ -169,10 +170,6 @@ classdef SDF3 < handle
 			val = obj.SL(obj.SC);
 		end
 
-		function val = Interp(obj, Field)
-			val = griddedInterpolant(obj.GD3.PX,obj.GD3.PY,obj.GD3.PZ,permute(Field,[2,1,3]),'linear' );
-		end
-
 		function val = Surf(obj, isovalue)
 			val = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,obj.F, isovalue);
 		end
@@ -199,15 +196,15 @@ classdef SDF3 < handle
 
 		% plot a 3D field on the val contour of the distance function
 		function plotField(obj,val,Field)
-			% calculate an interpolant of the Field
-			Interp = griddedInterpolant(obj.GD3.PX,obj.GD3.PY,obj.GD3.PZ,permute(Field,[2,1,3]),'linear' );
-			% triangle mesh of the val isosurface. TriMesh is a structure with fields "vertices" and "faces"
+			% triangle mesh of the val isosurface. 
+			% TriMesh is a structure with fields "vertices" and "faces"
 			TriMesh = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,obj.F,val);
 			% interpolate the values of the Field onto the vertices of the triangle mesh
-			SurfField = Interp(TriMesh.vertices(:,1),TriMesh.vertices(:,2),TriMesh.vertices(:,3));
+			SurfField = interp3(obj.GD3.X, obj.GD3.Y, obj.GD3.Z, Field, ...
+				TriMesh.vertices(:,1), TriMesh.vertices(:,2), TriMesh.vertices(:,3), 'linear');
 			% plot surface mesh 
-			patch('Vertices',TriMesh.vertices,'Faces',TriMesh.faces,'FaceVertexCData',SurfField,...
-				'FaceColor','interp','EdgeColor','none')
+			patch('Vertices',TriMesh.vertices,'Faces',TriMesh.faces, ...
+				  'FaceVertexCData',SurfField,'FaceColor','interp','EdgeColor','none')
 			axis equal
 			view(45,30)
 			colorbar
@@ -237,7 +234,7 @@ classdef SDF3 < handle
 		end
 
 		% plot the val contour of the distance function
-		function plotSurface(obj,val,trans,Color, time)
+		function plotSurface(obj,val,trans,Color)
 			F = obj.F;
 			surf1 = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,val);
 			p1 = patch(surf1);

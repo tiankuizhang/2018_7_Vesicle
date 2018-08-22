@@ -15,3 +15,10 @@ z = gpuArray(z);
 
 grid = SD.GD3(x,y,z);
 
+% create a SDF3 instance
+value = sqrt(x.^2+y.^2+z.^2) - 3;
+map = SD.SDF3(grid, x, y, z, value);
+
+
+
+
