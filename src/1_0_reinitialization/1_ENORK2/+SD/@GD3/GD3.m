@@ -96,7 +96,7 @@ classdef GD3 < handle
 			obj.Dz = Zm(1,1,2) - Zm(1,1,1);
 			obj.Ds = (obj.Dx + obj.Dy + obj.Dz) / 3;
 			obj.EltVol = obj.Dx * obj.Dy * obj.Dz;
-			obj.Size = gpuArray(size(Xm));
+			obj.Size = size(Xm);
 			obj.mrows = obj.Size(1);
 			obj.ncols = obj.Size(2);
 			obj.lshts = obj.Size(3);
