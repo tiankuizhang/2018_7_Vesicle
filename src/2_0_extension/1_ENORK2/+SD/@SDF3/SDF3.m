@@ -87,50 +87,8 @@ classdef SDF3 < handle
 
 
 	methods
-		
-		function ENORK2Reinitialization(obj)
-			
-			Fgpu = obj.F;
-			
-			mask = obj.F<0;
-			deltat = zeros(obj.GD3.Size, 'gpuArray');
-
-			xpr = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
-			xpl = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
-			ypf = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dy;
-			ypb = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dy;
-			zpu = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dz;
-			zpd = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dz;
-
-			[xpr, xpl, ypf, ypb, zpu, zpd] = feval(obj.ENORK2_boundary_correction, ...
-					xpr, xpl, ypf, ypb, zpu, zpd, Fgpu, obj.GD3.NumElt, ...
-				    obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
-					obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz);	
-
-			minx = min(xpr,xpl);
-			miny = min(ypf,ypb);
-			minz = min(zpu,zpd);
-			deltat = 0.3 * min(minx, min(miny,minz));
-
-			step = zeros(obj.GD3.Size, 'gpuArray');
-
-			for i=1:100
-				step = feval(obj.ENORK2_reinitiliaztion_step, step, Fgpu, mask, deltat, ...
-						xpr, xpl, ypf, ypb, zpu, zpd, ...
-				    	obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
-						obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
-				Ftmp = Fgpu - step;
-				step = feval(obj.ENORK2_reinitiliaztion_step, step, Ftmp, mask, deltat, ...
-						xpr, xpl, ypf, ypb, zpu, zpd, ...
-				    	obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
-						obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
-				Fgpu = (Fgpu + Ftmp - step) / 2;
-			end
-
-			obj.F = Fgpu;
-
-		end
-
+		ENORK2Reinitialization(obj,iteration)	
+		NewC = ENORK2Extend(obj, C, iteration)
 	end
 
 	%%
@@ -186,7 +144,7 @@ classdef SDF3 < handle
 			surf1 = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,val);
 			p1 = patch(surf1);
 			isonormals(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,p1)
-			set(p1,'FaceColor',Color,'EdgeColor','k','FaceAlpha',trans);
+			set(p1,'FaceColor',Color,'EdgeColor','none','FaceAlpha',trans);
 			axis(obj.GD3.BOX)
 			daspect([1 1 1])
 			view(3); 
@@ -204,6 +162,7 @@ classdef SDF3 < handle
 			view(3); 
 			camlight; lighting gouraud
 		end
+
 	end
 
 end

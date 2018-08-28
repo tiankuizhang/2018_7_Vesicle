@@ -29,7 +29,8 @@ obj = map;
 
 Fgpu = obj.F;
 
-C = obj.GD3.Z;
+C = - obj.GD3.Y;
+oldC = C;
 
 xpr = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
 xpl = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
@@ -88,16 +89,14 @@ deltat = 0.3 * min(obj.GD3.Dx, min(obj.GD3.Dy,obj.GD3.Dz));
 toc;
 
 tic;
-for i=1:30
-	step = feval(obj.ENORK2_extend_step, step, C, vx, vy, vz, ...
+for i=1:200
+	step = feval(obj.ENORK2_extend_step, step, C, Boundary, vx, vy, vz, ...
 		obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
 		obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
-	step(Boundary) = 0;
 	Ctmp = C - deltat * step;
-	step = feval(obj.ENORK2_extend_step, step, Ctmp, vx, vy, vz, ...
+	step = feval(obj.ENORK2_extend_step, step, Ctmp, Boundary, vx, vy, vz, ...
 		obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
 		obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
-	step(Boundary) = 0;
 	C = (C + Ctmp - deltat * step) / 2;
 end
 
@@ -105,3 +104,60 @@ end
 toc
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+C = - obj.GD3.X;
+oldC = C;
+
+tic
+C = map.ENORK2Extend(oldC, 200);
+toc
+
+figure
+subplot(2,2,1)
+obj.plotSurface(0,0.8,'Green',1)
+obj.plotSurfaceField(oldC,0,0.8,'Red')
+obj.plotSurfaceField(C,0,0.8,'Blue')
+
+subplot(2,2,2)
+obj.plotSurface(0,0.8,'Green',1)
+obj.plotSurfaceField(oldC,0.2,0.8,'Red')
+obj.plotSurfaceField(C,0.2,0.8,'Blue')
+
+subplot(2,2,3)
+obj.plotSurface(0,0.8,'Green',1)
+obj.plotSurfaceField(oldC,0.4,0.8,'Red')
+obj.plotSurfaceField(C,0.4,0.8,'Blue')
+
+subplot(2,2,4)
+obj.plotSurface(0,0.8,'Green',1)
+obj.plotSurfaceField(oldC,0.6,0.8,'Red')
+obj.plotSurfaceField(C,0.55,0.8,'Blue')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
