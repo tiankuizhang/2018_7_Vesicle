@@ -37,6 +37,7 @@ classdef SDF3 < handle
 
 		% kernel function object for ENORK2 extend scheme
 		ENORK2_upwind_normal % calculate upwind normals of the level set function
+		ENORK2_extend_step % calculate the extension step
 
 	end
 
@@ -74,6 +75,11 @@ classdef SDF3 < handle
 	 		obj.ENORK2_upwind_normal.ThreadBlockSize = obj.ThreadBlockSize;
 			obj.ENORK2_upwind_normal.GridSize = obj.GridSize;		
 
+			obj.ENORK2_extend_step = parallel.gpu.CUDAKernel('CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx', ...
+				   											   'CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu', ...
+														   	   'extend_step');
+	 		obj.ENORK2_extend_step.ThreadBlockSize = obj.ThreadBlockSize;
+			obj.ENORK2_extend_step.GridSize = obj.GridSize;		
 		end
 		
 
@@ -181,6 +187,18 @@ classdef SDF3 < handle
 			p1 = patch(surf1);
 			isonormals(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,p1)
 			set(p1,'FaceColor',Color,'EdgeColor','k','FaceAlpha',trans);
+			axis(obj.GD3.BOX)
+			daspect([1 1 1])
+			view(3); 
+			camlight; lighting gouraud
+		end
+
+		% plot the val contour of the field (not the level set function)
+		function plotSurfaceField(obj,F,val,trans,Color)
+			surf1 = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,val);
+			p1 = patch(surf1);
+			isonormals(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,p1)
+			set(p1,'FaceColor',Color,'EdgeColor','none','FaceAlpha',trans);
 			axis(obj.GD3.BOX)
 			daspect([1 1 1])
 			view(3); 
