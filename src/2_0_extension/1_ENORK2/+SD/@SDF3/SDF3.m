@@ -35,6 +35,9 @@ classdef SDF3 < handle
 		ENORK2_boundary_correction % calculate grid step with modification near boundary
 		ENORK2_reinitiliaztion_step % calculate the numerical Hamiltonian for the Reinitalization equation
 
+		% kernel function object for ENORK2 extend scheme
+		ENORK2_upwind_normal % calculate upwind normals of the level set function
+
 	end
 
 	methods
@@ -61,6 +64,15 @@ classdef SDF3 < handle
 																	 're_step');
 			obj.ENORK2_reinitiliaztion_step.ThreadBlockSize = obj.ThreadBlockSize;
 			obj.ENORK2_reinitiliaztion_step.GridSize = obj.GridSize;
+
+			% functions used by the extend scheme
+			system('nvcc -ptx CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu -o CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx');
+
+			obj.ENORK2_upwind_normal = parallel.gpu.CUDAKernel('CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx', ...
+				   											   'CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu', ...
+														   	   'upwind_normal');
+	 		obj.ENORK2_upwind_normal.ThreadBlockSize = obj.ThreadBlockSize;
+			obj.ENORK2_upwind_normal.GridSize = obj.GridSize;		
 
 		end
 		
