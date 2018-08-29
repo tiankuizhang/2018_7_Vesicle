@@ -74,7 +74,8 @@ double_eno_derivative eno_derivative_field( double v4, double v1, double v0, dou
 }
 
 /*******************************************************************************
- * calculate upwind normal with ENO scheme
+ * calculate upwind normal with ENO scheme at a single point
+ * along a single direction
  *******************************************************************************/                                                                                 
 __device__ inline
 double upwind_normal_point( double v4, double v1, double v0, double v2, double v3, double pr, double pl, double ds)

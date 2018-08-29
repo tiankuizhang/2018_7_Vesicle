@@ -10,7 +10,6 @@ classdef SDF3 < handle
 		F % values of the signed distance function
 	end
 
-
 	methods
 
 		function obj = SDF3(grid, Xm, Ym, Zm, Val)
@@ -21,10 +20,7 @@ classdef SDF3 < handle
 
 	end
 
-
-	%%
 	%% GPU related properties and functions
-	%%
 	properties
 		
 		% parameter for GPU kernel
@@ -39,6 +35,9 @@ classdef SDF3 < handle
 		ENORK2_upwind_normal % calculate upwind normals of the level set function
 		ENORK2_extend_step % calculate the extension step
 
+		% kernel funcion object for ENORK2 surface redistance scheme
+		ENORK2_surface_redistance_step % calculate the numerical Hamiltonian for the surface redistacne equation
+
 	end
 
 	methods
@@ -51,7 +50,7 @@ classdef SDF3 < handle
 							ceil(obj.GD3.ncols/obj.ThreadBlockSize(2)), ...
 							ceil(obj.GD3.lshts/obj.ThreadBlockSize(3))];
 
-			% functions used by reinitialization scheme
+			% functions used by reinitialization scheme and other schemes
 			system('nvcc -ptx CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.cu -o CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.ptx');
 
 			obj.ENORK2_boundary_correction = parallel.gpu.CUDAKernel('CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.ptx', ...
@@ -66,7 +65,7 @@ classdef SDF3 < handle
 			obj.ENORK2_reinitiliaztion_step.ThreadBlockSize = obj.ThreadBlockSize;
 			obj.ENORK2_reinitiliaztion_step.GridSize = obj.GridSize;
 
-			% functions used by the extend scheme
+			% functions used by the extend scheme and other schemes
 			system('nvcc -ptx CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu -o CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx');
 
 			obj.ENORK2_upwind_normal = parallel.gpu.CUDAKernel('CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx', ...

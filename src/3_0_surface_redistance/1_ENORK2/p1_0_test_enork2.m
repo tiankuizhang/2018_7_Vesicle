@@ -20,8 +20,6 @@ F = fun(x, y, z);
 
 map = SD.SDF3(grid, x, y, z, F);
 
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tic;
 
@@ -29,8 +27,7 @@ obj = map;
 
 Fgpu = obj.F;
 
-C = - obj.GD3.Y;
-oldC = C;
+AF = obj.GD3.Z;
 
 xpr = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
 xpl = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
@@ -62,78 +59,12 @@ nx = fx ./ fgradient;
 ny = fy ./ fgradient;
 nz = fz ./ fgradient;
 
-vx = sign(Fgpu) .* nx;
-vy = sign(Fgpu) .* ny;
-vz = sign(Fgpu) .* nz;
-
-% boundary nodes
-Boundary = ( obj.F .* obj.F(obj.GD3.oxo) < 0 ) | ...
-		   ( obj.F .* obj.F(obj.GD3.oXo) < 0 ) | ...
-		   ( obj.F .* obj.F(obj.GD3.yoo) < 0 ) | ...
-		   ( obj.F .* obj.F(obj.GD3.Yoo) < 0 ) | ...
-		   ( obj.F .* obj.F(obj.GD3.ooz) < 0 ) | ...
-		   ( obj.F .* obj.F(obj.GD3.ooZ) < 0 ) ; 
-
-% closest points on boundary from boundary nodes 
-x_shift = obj.GD3.X(Boundary) - nx(Boundary) .* obj.F(Boundary);
-y_shift = obj.GD3.Y(Boundary) - ny(Boundary) .* obj.F(Boundary);
-z_shift = obj.GD3.Z(Boundary) - nz(Boundary) .* obj.F(Boundary);
-
-C(Boundary) = interp3(obj.GD3.X, obj.GD3.Y, obj.GD3.Z, C, ...
-		x_shift, y_shift, z_shift, 'linear');
-
-
-step = zeros(obj.GD3.Size, 'gpuArray');
-deltat = 0.3 * min(obj.GD3.Dx, min(obj.GD3.Dy,obj.GD3.Dz));
-
-toc;
-
-tic;
-for i=1:200
-	step = feval(obj.ENORK2_extend_step, step, C, Boundary, vx, vy, vz, ...
-		obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
-		obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
-	Ctmp = C - deltat * step;
-	step = feval(obj.ENORK2_extend_step, step, Ctmp, Boundary, vx, vy, vz, ...
-		obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
-		obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
-	C = (C + Ctmp - deltat * step) / 2;
-end
-
-
-toc
+% calculate the sign of the original auxiliary level set function
+Sign = zeros(obj.GD3.Size, 'gpuArray');
+Sign(AF>0) = 1.;
+Sign(AF<0) = -1.;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-C = - obj.GD3.X;
-oldC = C;
-
-tic
-C = map.ENORK2Extend(oldC, 200);
-toc
-
-figure
-subplot(2,2,1)
-obj.plotSurface(0,0.8,'Green',1)
-obj.plotSurfaceField(oldC,0,0.8,'Red')
-obj.plotSurfaceField(C,0,0.8,'Blue')
-
-subplot(2,2,2)
-obj.plotSurface(0,0.8,'Green',1)
-obj.plotSurfaceField(oldC,0.2,0.8,'Red')
-obj.plotSurfaceField(C,0.2,0.8,'Blue')
-
-subplot(2,2,3)
-obj.plotSurface(0,0.8,'Green',1)
-obj.plotSurfaceField(oldC,0.4,0.8,'Red')
-obj.plotSurfaceField(C,0.4,0.8,'Blue')
-
-subplot(2,2,4)
-obj.plotSurface(0,0.8,'Green',1)
-obj.plotSurfaceField(oldC,0.6,0.8,'Red')
-obj.plotSurfaceField(C,0.55,0.8,'Blue')
-
-
 
 
 
