@@ -79,6 +79,15 @@ classdef SDF3 < handle
 														   	   'extend_step');
 	 		obj.ENORK2_extend_step.ThreadBlockSize = obj.ThreadBlockSize;
 			obj.ENORK2_extend_step.GridSize = obj.GridSize;		
+
+			% functions used by the surface redistance schemes
+			system('nvcc -ptx CUDA_Code/3_0_ENORK2_SurfaceRedistance/enork2_surface_redistance.cu -o CUDA_Code/3_0_ENORK2_SurfaceRedistance/enork2_surface_redistance.ptx');
+
+			obj.ENORK2_surface_redistance_step = parallel.gpu.CUDAKernel('CUDA_Code/3_0_ENORK2_SurfaceRedistance/enork2_surface_redistance.ptx', ...
+																		 'CUDA_Code/3_0_ENORK2_SurfaceRedistance/enork2_surface_redistance.cu', ...
+																		 'surface_redistance_step');
+			obj.ENORK2_surface_redistance_step.ThreadBlockSize = obj.ThreadBlockSize;
+			obj.ENORK2_surface_redistance_step.GridSize = obj.GridSize;
 		end
 		
 

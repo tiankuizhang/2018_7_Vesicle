@@ -34,6 +34,29 @@ double sign(double x)
 	return (x>0) ? 1.0 : -1.0;
 }
 
+__device__ inline
+bool same_sign(double x, double y)
+{
+	return (x*y>0) || (x==0 && y==0);
+}	
+
+__device__ inline
+void advection_velocity(double & H1, double & H2, double & H3, double sign, double Dx, double Dy, double Dz, double nx, double ny, double nz)
+{
+	double normal_d = nx * Dx + ny + Dy + nz * Dz;
+
+	H1 = sign * (Dx - nx * normal_d);
+	H2 = sign * (Dy - ny * normal_d);
+	H3 = sign * (Dz - nz * normal_d);
+
+	double H_mag = sqrt(H1*H1+H2*H2+H3*H3+1e-6);
+
+	H1 = H1/H_mag;
+	H2 = H2/H_mag;
+	H3 = H3/H_mag;
+
+}
+
 
 // convert subindex to linear index
 // periodic boundary conditions are assumed
@@ -96,9 +119,7 @@ void surface_redistance_step(double * step, double const * lsf, double const * s
 	int left2 	= sub2ind(row_idx, col_idx-2, pge_idx, rows, cols, pges);
 
 	double_eno_derivative eno_dx = eno_derivative( lsf[left2], lsf[left], lsf[ind], lsf[right], lsf[right2], xpr[ind], xpl[ind], dx);
-	double xR = eno_dx.sR;
-	double xL = eno_dx.sL;
-
+	double Dx[3] = {eno_dx.sR, 0, eno_dx.sL};
 
 	int front 	= sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);	
 	int front2 	= sub2ind(row_idx+2, col_idx, pge_idx, rows, cols, pges);
@@ -106,9 +127,7 @@ void surface_redistance_step(double * step, double const * lsf, double const * s
 	int back2 	= sub2ind(row_idx-2, col_idx, pge_idx, rows, cols, pges);
 
 	double_eno_derivative eno_dy = eno_derivative( lsf[back2], lsf[back], lsf[ind], lsf[front], lsf[front2], ypf[ind], ypb[ind], dy);
-	double yF = eno_dy.sR;
-	double yB = eno_dy.sL;
-
+	double Dy[3] = {eno_dy.sR, 0, eno_dy.sL};
 
 	int up 		= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);	
 	int up2 	= sub2ind(row_idx, col_idx, pge_idx+2, rows, cols, pges);	
@@ -116,10 +135,50 @@ void surface_redistance_step(double * step, double const * lsf, double const * s
 	int down2 	= sub2ind(row_idx, col_idx, pge_idx-2, rows, cols, pges);
 
 	double_eno_derivative eno_dz = eno_derivative( lsf[down2], lsf[down], lsf[ind], lsf[up], lsf[up2], zpu[ind], zpd[ind], dz);
-	double zU = eno_dz.sR;
-	double zD = eno_dz.sL;
+	double Dz[3] = {eno_dz.sR, 0, eno_dz.sL};
 
-	double Dx[3] = {xR, xL, 0};
+
+	//Forward=-1, None=0, BackWard=1
+	int const choice_x[26] = {-1,-1,-1,-1, 1, 1, 1, 1,	 0, 0, 0, 0,-1,-1, 1, 1,-1,-1, 1, 1,	-1, 1, 0, 0, 0, 0};
+	int const choice_y[26] = {-1,-1, 1, 1,-1,-1, 1, 1,	-1,-1, 1, 1, 0, 0, 0, 0,-1, 1,-1, 1,	 0, 0,-1, 1, 0, 0};
+	int const choice_z[26] = {-1, 1,-1, 1,-1, 1,-1, 1,	-1, 1,-1, 1,-1, 1,-1, 1, 0, 0, 0, 0,	 0, 0, 0, 0,-1, 1};
+
+	double Nx = nx[ind];
+	double Ny = ny[ind];
+	double Nz = nz[ind];
+	double Sign = sign[ind];
+
+	double dx_c = (Dx[0] + Dx[2]) / 2;
+	double dy_c = (Dy[0] + Dy[2]) / 2;
+	double dz_c = (Dz[0] + Dz[2]) / 2;
+
+	double maxH1 = 0;
+	double maxH2 = 0;
+	double maxH3 = 0;
+
+	for(int i=0;i<26;i++){
+		double dr_x = Dx[choice_x[i]+1];
+		double dr_y = Dy[choice_y[i]+1];
+		double dr_z = Dz[choice_z[i]+1];
+
+		double H1, H2, H3; // information propagation direction
+		advection_velocity(H1,H2,H3,Sign,dr_x,dr_y,dr_z,Nx,Ny,Nz);
+
+		maxH1 = (fabs(H1)>maxH1) ? fabs(H1) : maxH1;
+		maxH2 = (fabs(H2)>maxH2) ? fabs(H2) : maxH1;
+		maxH3 = (fabs(H3)>maxH3) ? fabs(H3) : maxH1;
+
+	}
+
+
+	double dt = deltat[ind];
+	//step[ind] = dt*Sign*(sqrt( pow(dx_c*Nz-Nx*dz_c,2)+pow(dy_c*Nx-Ny*dx_c,2)+pow(dz_c*Ny-Nz*dy_c,2) )-1) - 0.5*(Dx[0]-Dx[2]) - 0.5*(Dy[0]-Dy[2]) - 0.5*(Dz[0]-Dz[2]);
+	step[ind] = dt*Sign*(sqrt( pow(dx_c*Nz-Nx*dz_c,2)+pow(dy_c*Nx-Ny*dx_c,2)+pow(dz_c*Ny-Nz*dy_c,2) )-1) - 0.5*dt*(maxH1*(Dx[0]-Dx[2]) - maxH2*(Dy[0]-Dy[2]) - maxH3*(Dz[0]-Dz[2]));
+	//step[ind] = deltat[ind]*Sign*(sqrt( pow(dx_c*Nz-Nx*dz_c,2)+pow(dy_c*Nx-Ny*dx_c,2)+pow(dz_c*Ny-Nz*dy_c,2) )-1);
+	//step[ind] = maxH3;
+	//step[ind] = Dz[0] - Dz[2];
+//	step[ind] = Dz[0];
+
 
 }
 

@@ -27,7 +27,8 @@ obj = map;
 
 Fgpu = obj.F;
 
-AF = obj.GD3.Z;
+AF = obj.ENORK2Extend(obj.GD3.Z,100);
+OldAF = AF;
 
 xpr = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
 xpl = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
@@ -36,12 +37,13 @@ ypb = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dy;
 zpu = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dz;
 zpd = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dz;
 
-[xpr, xpl, ypf, ypb, zpu, zpd] = feval(obj.ENORK2_boundary_correction, ...
-		xpr, xpl, ypf, ypb, zpu, zpd, Fgpu, obj.GD3.NumElt, ...
-	    obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
-		obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz);	
+% AF instead of Fgpu should be used!!!!
+%[xpr, xpl, ypf, ypb, zpu, zpd] = feval(obj.ENORK2_boundary_correction, ...
+%		xpr, xpl, ypf, ypb, zpu, zpd, AF, obj.GD3.NumElt, ...
+%	    obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
+%		obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz);	
 
-% calculate the extend velocity upwindly
+% calculate the normal to the surface upwindly
 fx = zeros(obj.GD3.Size, 'gpuArray');
 fy = zeros(obj.GD3.Size, 'gpuArray');
 fz = zeros(obj.GD3.Size, 'gpuArray');
@@ -64,8 +66,42 @@ Sign = zeros(obj.GD3.Size, 'gpuArray');
 Sign(AF>0) = 1.;
 Sign(AF<0) = -1.;
 
+%
+minx = min(xpr,xpl);
+miny = min(ypf,ypb);
+minz = min(zpu,zpd);
+deltat = 0.3 * min(minx, min(miny,minz));
+
+step = zeros(obj.GD3.Size, 'gpuArray');
+
+tic
+for i=1:20
+	step = feval(obj.ENORK2_surface_redistance_step,step,AF,Sign,deltat,nx,ny,nz,...
+		   		xpr,xpl,ypf,ypb,zpu,zpd,...	
+		    	obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
+				obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
+	AFtmp = AF - step;
+	step = feval(obj.ENORK2_surface_redistance_step,step,AFtmp,Sign,deltat,nx,ny,nz,...
+		   		xpr,xpl,ypf,ypb,zpu,zpd,...	
+		    	obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
+				obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
+	AF = (AF + AFtmp - step) / 2;
+
+end
+toc
+
+%	step = feval(obj.ENORK2_surface_redistance_step,step,AF,Sign,deltat,nx,ny,nz,...
+%		   		xpr,xpl,ypf,ypb,zpu,zpd,...	
+%		    	obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
+%				obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
+%
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+ figure
+ obj.plotSurface(0,0.8,'Green',1)
+ obj.plotSurfaceField(OldAF,0,0.8,'Red')
+ obj.plotSurfaceField(AF,0,0.8,'Blue')
 
 
 
