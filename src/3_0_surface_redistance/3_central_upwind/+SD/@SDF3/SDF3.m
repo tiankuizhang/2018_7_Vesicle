@@ -174,16 +174,19 @@ classdef SDF3 < handle
 		% plot the val contour of the field within the surface (designed for the auxilary level
 	 	% set function
 		function plotIsoField(obj, iso, field)
+			[faces,verts,colors] = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,obj.F,0,field);
+			facecolor = [colors(faces(:,1)),colors(faces(:,2)),colors(faces(:,2))];
+			intersect = ~(all(facecolor'>0) | all(facecolor'<0));
+			obj.plotSurface(0,1,'Green',1)
+			patch('Vertices',verts,'Faces',faces(intersect,:),'FaceColor','Red','EdgeColor','none');
 			len = length(iso);
-			ds = (obj.GD3.Dx + obj.GD3.Dy + obj.GD3.Dz) / 3;
-			mask = true(obj.GD3.Size, 'gpuArray');
 			for i=1:len
-				mask = abs(field-iso(i)) < .6*ds;
-				%field(mask) = 10*field(mask);	
-				field(mask) = 100;	
+				intersect = ~(all(facecolor'>iso(i)) | all(facecolor'<iso(i)));
+				patch('Vertices',verts,'Faces',faces(intersect,:),'FaceColor','Black','EdgeColor','Black');
 			end
-			obj.plotField(0,field);
+			
 		end
+
 
 	end
 

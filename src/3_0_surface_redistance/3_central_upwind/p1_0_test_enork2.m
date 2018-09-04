@@ -27,7 +27,8 @@ obj = map;
 
 Fgpu = obj.F;
 
-AF = obj.ENORK2Extend(obj.GD3.Z,100);
+%AF = obj.ENORK2Extend(obj.GD3.Z,100);
+AF = obj.GD3.Z-0.3;
 OldAF = AF;
 
 xpr = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
@@ -102,18 +103,12 @@ AF = obj.ENORK2Extend(AF,100);
 
 figure
 
-subplot(2,2,1)
-obj.plotIsoField([0],obj.GD3.Z)
-%obj.plotIsoField([0,0.1,0.2,0.3,0.4,0.5,0.6,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6],obj.GD3.Z)
+subplot(1,2,1)
+obj.plotIsoField([0.1,0.2,0.3,0.4,0.5,0.6,0.7,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7],OldAF)
 
-subplot(2,2,2)
-obj.plotIsoField([0],OldAF)
-%obj.plotIsoField([0,0.1,0.2,0.3,0.4,0.5,0.6,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6],OldAF);
+subplot(1,2,2)
+obj.plotIsoField([0.1,0.2,0.3,0.4,0.5,0.6,0.7,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7],AF)
 
-
-subplot(2,2,3)
-%obj.plotIsoField([0,0.1,0.2,0.3,0.4,0.5,0.6,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6],AF)
-obj.plotIsoField([0],AF)
 
 
 
