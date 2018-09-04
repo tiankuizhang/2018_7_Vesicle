@@ -103,7 +103,7 @@ double_eno_derivative eno_derivative( double v4, double v1, double v0, double v2
 
 }
 
-// calculate surface redistance step
+// calculate surface redistance step with central upwind scheme
 // now lsf represents the auxilary level set function(not the level set function)
 // inputs : the auxilary level set function, sign of the initial level set function, distance to the interface, normal vectors
 __global__
@@ -180,7 +180,8 @@ void surface_redistance_step(double * step, double const * lsf, double const * s
 	}
 
 	// calculate the numerical Hamiltonian
-	double epsilon=1e-10;
+	//double epsilon=1e-10;
+	double epsilon=0.;
 	double numerical_Hamiltonian = 0;
 	double denominator = (a[0]+a[1])*(b[0]+b[1])*(c[0]+c[1])+epsilon;
 

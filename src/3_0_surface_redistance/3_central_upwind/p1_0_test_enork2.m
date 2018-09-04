@@ -101,13 +101,67 @@ AF = obj.ENORK2Extend(AF,100);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-figure
+%figure
+%
+%subplot(1,2,1)
+%obj.plotIsoField([0.1,0.2,0.3,0.4,0.5,0.6,0.7,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7],OldAF)
+%
+%subplot(1,2,2)
+%obj.plotIsoField([0.1,0.2,0.3,0.4,0.5,0.6,0.7,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7],AF)
 
-subplot(1,2,1)
-obj.plotIsoField([0.1,0.2,0.3,0.4,0.5,0.6,0.7,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7],OldAF)
 
-subplot(1,2,2)
-obj.plotIsoField([0.1,0.2,0.3,0.4,0.5,0.6,0.7,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7],AF)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% experiment with plotting intersection of two implicit surfaces
+
+iso = 0.3;
+[faces,verts,colors] = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,obj.F,0,obj.GD3.Z);
+mask = colors>iso;
+
+outcount = sum(mask(faces),2);
+cross = (outcount == 2) | (outcount == 1);
+cross_tris = faces(cross,:);
+
+%obj.plotSurface(0,1,'Green',1)
+%ct = patch('Vertices',verts,'Faces',cross_tris,'EdgeColor',[1 .5 0],'FaceColor',[.5 1 .5]);
+
+out_vert = mask(cross_tris);
+flip = sum(out_vert,2) == 1;
+out_vert(flip,:) = 1-out_vert(flip,:);
+
+ntri = size(out_vert,1);
+overt = zeros(ntri,3);
+
+for i=1:ntri
+	v1i = find(~out_vert(i,:));
+	v2i = 1 + mod(v1i,3);
+	v3i = 1 + mod(v1i+1,3);
+	overt(i,:) = cross_tris(i,[v1i v2i v3i]);
+end
+
+u = (iso - colors(overt(:,1))) ./ (colors(overt(:,2)) - colors(overt(:,1)));
+v = (iso - colors(overt(:,1))) ./ (colors(overt(:,3)) - colors(overt(:,1)));
+
+uverts = repmat((1-u),[1 3]).*verts(overt(:,1),:) + repmat(u,[1 3]).*verts(overt(:,2),:);
+vverts = repmat((1-v),[1 3]).*verts(overt(:,1),:) + repmat(v,[1 3]).*verts(overt(:,3),:);
+
+x = nan(3,ntri);
+x(1,:) = uverts(:,1)';
+x(2,:) = vverts(:,1)';
+y = nan(3,ntri);
+y(1,:) = uverts(:,2)';
+y(2,:) = vverts(:,2)';
+z = nan(3,ntri);
+z(1,:) = uverts(:,3)';
+z(2,:) = vverts(:,3)';
+
+obj.plotSurface(0,1,'Green',1)
+h = line(x(:),y(:),z(:),'Color','red','LineWidth',3);
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 
 
