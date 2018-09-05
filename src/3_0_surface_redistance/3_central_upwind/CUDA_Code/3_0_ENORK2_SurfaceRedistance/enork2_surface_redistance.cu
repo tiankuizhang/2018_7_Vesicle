@@ -49,7 +49,8 @@ void advection_velocity(double & H1, double & H2, double & H3, double & normal_d
 	H2 = sign * (Dy - ny * normal_d);
 	H3 = sign * (Dz - nz * normal_d);
 
-	double H_mag = sqrt(H1*H1+H2*H2+H3*H3)+1e-10;
+	//double H_mag = sqrt(H1*H1+H2*H2+H3*H3)+1e-10;
+	double H_mag = sqrt(H1*H1+H2*H2+H3*H3);
 
 	H1 = H1/H_mag;
 	H2 = H2/H_mag;
@@ -59,7 +60,11 @@ void advection_velocity(double & H1, double & H2, double & H3, double & normal_d
 __device__ inline
 void Upwind_Hamiltonian(double & Hamil, double normal_d, double sign, double Dx, double Dy, double Dz)
 {
-	Hamil = sign* ( sqrt( Dx*Dx + Dy*Dy + Dz*Dz - normal_d*normal_d ) - 1);
+	// numerical error can lead to negative surface_grad sometimes
+	// the following code is needed to avoid NAN due to sqrt of a negative number
+	double surface_grad = Dx*Dx + Dy*Dy + Dz*Dz - normal_d*normal_d;
+	surface_grad = (surface_grad>0) ? surface_grad : 0;
+	Hamil = sign* ( sqrt( surface_grad ) - 1);
 	//Hamil =   Dx*Dx + Dy*Dy + Dz*Dz - normal_d*normal_d  ;
 }
 
@@ -180,7 +185,7 @@ void surface_redistance_step(double * step, double const * lsf, double const * s
 	}
 
 	// calculate the numerical Hamiltonian
-	//double epsilon=1e-10;
+	//double epsilon=1e-6;
 	double epsilon=0.;
 	double numerical_Hamiltonian = 0;
 	double denominator = (a[0]+a[1])*(b[0]+b[1])*(c[0]+c[1])+epsilon;
@@ -200,6 +205,8 @@ void surface_redistance_step(double * step, double const * lsf, double const * s
 	numerical_Hamiltonian += - a[0]*a[1]*(Dx[0]-Dx[1])/(a[0]+a[1]+epsilon) - b[0]*b[1]*(Dy[0]-Dy[1])/(b[0]+b[1]+epsilon) - c[0]*c[1]*(Dz[0]-Dz[1])/(c[0]+c[1]+epsilon);
 
 	step[ind] = numerical_Hamiltonian * deltat[ind];
+
+	step[ind] = (step[ind] == NAN ) ? 0 : step[ind];
 
 	//step[ind] = numerical_Hamiltonian;
 	//step[ind] = Hamiltonian[0];
