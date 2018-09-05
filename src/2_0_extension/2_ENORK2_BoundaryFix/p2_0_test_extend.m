@@ -1,16 +1,39 @@
-% extend a scalar field off the interface
-% boundary node values are fixed with interpolation
-% upwind scheme used to define normal and therefore extend velocity
-% ENO scheme used to calculate forward and backward derivative
+% test ENO-RK2 reinitialization scheme
+
+% create a 3D grid
+xv = linspace(-1,1,64);
+yv = xv;
+zv = xv;
+
+[x,y,z] = meshgrid(xv,yv,zv);
+
+x = gpuArray(x);
+y = gpuArray(y);
+z = gpuArray(z);
+
+grid = SD.GD3(x,y,z);
+
+% create a SDF3 instance
+Radius = 0.6;
+fun = @(x,y,z) sqrt(x.^2+y.^2+z.^2)-Radius;
+
+F = fun(x, y, z);
+
+map = SD.SDF3(grid, x, y, z, F);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % new extension scheme with subcell boundary fix
 % first calculate the intersection of surface with grid lines
 % then use ENO quadratic interpolation to calculate values at those points
 % ENO derivatives near boundary will modified accordingly
 
-function NewC = ENORK2Extend(obj, C, iteration)
 
-	NewC = C;
-
+	obj = map;
+	OldC = obj.GD3.Z;
+	NewC = OldC;
+	iteration = 500;
+tic
 	% calculate distance to the neighborhood node without crossing the interface
 	xpr = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
 	xpl = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
@@ -23,7 +46,7 @@ function NewC = ENORK2Extend(obj, C, iteration)
 			xpr, xpl, ypf, ypb, zpu, zpd, obj.F, obj.GD3.NumElt, ...
 		    obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
 			obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz);	
-	
+
 	% calculate the extend velocity upwindly
 	fx = zeros(obj.GD3.Size, 'gpuArray');
 	fy = zeros(obj.GD3.Size, 'gpuArray');
@@ -45,7 +68,7 @@ function NewC = ENORK2Extend(obj, C, iteration)
 	vx = sign(obj.F) .* nx;
 	vy = sign(obj.F) .* ny;
 	vz = sign(obj.F) .* nz;
-	
+
 	% interpolate values for crossing points
 	cpr = zeros(obj.GD3.Size, 'gpuArray');
 	cpl = zeros(obj.GD3.Size, 'gpuArray');
@@ -66,6 +89,9 @@ function NewC = ENORK2Extend(obj, C, iteration)
 
 	step = zeros(obj.GD3.Size, 'gpuArray');
 
+toc
+
+tic
 	for i=1:iteration
 		step = feval(obj.ENORK2_extend_step,step,deltat,NewC,vx,vy,vz,...
 				xpr,xpl,ypf,ypb,zpu,zpd,cpr,cpl,cpf,cpb,cpu,cpd,...
@@ -78,5 +104,19 @@ function NewC = ENORK2Extend(obj, C, iteration)
 				obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
 		NewC = (NewC + Ctmp - step) / 2;
 	end
-	
-end
+
+toc
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+figure
+iso = 0.3;
+obj.plotSurface(0,0.8,'Green',1)
+obj.plotSurfaceField(OldC,iso,0.8,'Red')
+obj.plotSurfaceField(NewC,iso,0.8,'Blue')
+
+
+
+
+
+
