@@ -45,7 +45,7 @@ classdef SDF3 < handle
 		% initialize GPU functions
 		function GPUInitialize(obj)
 			
-			obj.ThreadBlockSize = [obj.GD3.mrows,4,1];
+			obj.ThreadBlockSize = [obj.GD3.mrows,ceil(512/obj.GD3.mrows),1];
 			obj.GridSize = [ceil(obj.GD3.mrows/obj.ThreadBlockSize(1)), ...
 							ceil(obj.GD3.ncols/obj.ThreadBlockSize(2)), ...
 							ceil(obj.GD3.lshts/obj.ThreadBlockSize(3))];
