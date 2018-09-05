@@ -31,7 +31,7 @@ toc
 
 iso = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,-0.1,-0.2,-0.3,-0.4,-0.5,-0.6,-0.7];
 
-clf
+figure
 subplot(1,2,1)
 map.plotIsoField(iso,AF)
 

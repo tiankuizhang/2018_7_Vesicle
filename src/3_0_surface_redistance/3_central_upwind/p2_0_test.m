@@ -27,10 +27,7 @@ obj = map;
 
 Fgpu = obj.F;
 
-%AF = obj.ENORK2Extend(obj.GD3.Z,100);
-AF = obj.GD3.X+0.3;
-% if iteration step is larger than 49, solution will blow up?????
- AF = obj.ENORK2Extend(AF,200);
+AF = obj.ENORK2Extend(obj.GD3.Z-0.3,200);
 OldAF = AF;
 
 xpr = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;

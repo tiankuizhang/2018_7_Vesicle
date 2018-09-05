@@ -4,8 +4,9 @@
 function NewAF = ENORK2CentralUpwindSurfaceRedistance(obj,AF,iteration)
 
 	% this step can improve numerical accuracy 
-	 NewAF = obj.ENORK2Extend(AF,10);
-	% NewAF = AF;
+	% note that this step can change sign of nodes and to calculate sign
+	% NewAF instead of AF should be used
+	NewAF = obj.ENORK2Extend(AF,10);
 
 	xpr = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
 	xpl = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
@@ -39,9 +40,10 @@ function NewAF = ENORK2CentralUpwindSurfaceRedistance(obj,AF,iteration)
 	nz = fz ./ fgradient;
 
 	% calculate the sign of the original auxiliary level set function
+	% NewAF instead of AF should be used
 	Sign = zeros(obj.GD3.Size, 'gpuArray');
-	Sign(AF>0) = 1.;
-	Sign(AF<0) = -1.;
+	Sign(NewAF>0) = 1.;
+	Sign(NewAF<0) = -1.;
 	
 	% CFL condition imposed on time step
 	minx = min(xpr,xpl);
