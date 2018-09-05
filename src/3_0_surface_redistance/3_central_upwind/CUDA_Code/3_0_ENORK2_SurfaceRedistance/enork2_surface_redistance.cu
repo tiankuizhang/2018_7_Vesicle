@@ -27,18 +27,11 @@ double min_mod(double x, double y)
 	return (x*y<0) ? 0.0 : (fabs(x)<fabs(y) ? x : y);
 }
 
-
 __device__ inline
 double sign(double x)
 {
 	return (x>0) ? 1.0 : -1.0;
 }
-
-__device__ inline
-bool same_sign(double x, double y)
-{
-	return (x*y>0) || (x==0 && y==0);
-}	
 
 __device__ inline
 void advection_velocity(double & H1, double & H2, double & H3, double & normal_d, double sign, double Dx, double Dy, double Dz, double nx, double ny, double nz)
@@ -49,7 +42,6 @@ void advection_velocity(double & H1, double & H2, double & H3, double & normal_d
 	H2 = sign * (Dy - ny * normal_d);
 	H3 = sign * (Dz - nz * normal_d);
 
-	//double H_mag = sqrt(H1*H1+H2*H2+H3*H3)+1e-10;
 	double H_mag = sqrt(H1*H1+H2*H2+H3*H3);
 
 	H1 = H1/H_mag;
@@ -60,12 +52,9 @@ void advection_velocity(double & H1, double & H2, double & H3, double & normal_d
 __device__ inline
 void Upwind_Hamiltonian(double & Hamil, double normal_d, double sign, double Dx, double Dy, double Dz)
 {
-	// numerical error can lead to negative surface_grad sometimes
+	// numerical error can lead to negative value inside sqrt() 
 	// the following code is needed to avoid NAN due to sqrt of a negative number
-	double surface_grad = Dx*Dx + Dy*Dy + Dz*Dz - normal_d*normal_d;
-	surface_grad = (surface_grad>0) ? surface_grad : 0;
-	Hamil = sign* ( sqrt( surface_grad ) - 1);
-	//Hamil =   Dx*Dx + Dy*Dy + Dz*Dz - normal_d*normal_d  ;
+	Hamil = sign* ( sqrt( max2(0,Dx*Dx+Dy*Dy+Dz*Dz-normal_d*normal_d) ) - 1);
 }
 
 
@@ -137,8 +126,7 @@ void surface_redistance_step(double * step, double const * lsf, double const * s
 	int back 	= sub2ind(row_idx-1, col_idx, pge_idx, rows, cols, pges);
 	int back2 	= sub2ind(row_idx-2, col_idx, pge_idx, rows, cols, pges);
 
-	double_eno_derivative eno_dy = eno_derivative( lsf[back2], lsf[back], lsf[ind], lsf[front], lsf[front2], ypf[ind], ypb[ind], dy);
-	double Dy[2] = {eno_dy.sR, eno_dy.sL};
+	double_eno_derivative eno_dy = eno_derivative( lsf[back2], lsf[back], lsf[ind], lsf[front], lsf[front2], ypf[ind], ypb[ind], dy); double Dy[2] = {eno_dy.sR, eno_dy.sL};
 
 	int up 		= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);	
 	int up2 	= sub2ind(row_idx, col_idx, pge_idx+2, rows, cols, pges);	
@@ -186,9 +174,8 @@ void surface_redistance_step(double * step, double const * lsf, double const * s
 
 	// calculate the numerical Hamiltonian
 	//double epsilon=1e-6;
-	double epsilon=0.;
 	double numerical_Hamiltonian = 0;
-	double denominator = (a[0]+a[1])*(b[0]+b[1])*(c[0]+c[1])+epsilon;
+	double denominator = (a[0]+a[1])*(b[0]+b[1])*(c[0]+c[1]);
 
 	int const choice_a[8]={1,1,1,1,0,0,0,0};
 	int const choice_b[8]={1,1,0,0,1,1,0,0};
@@ -202,14 +189,9 @@ void surface_redistance_step(double * step, double const * lsf, double const * s
 	}
 	numerical_Hamiltonian = numerical_Hamiltonian/denominator;
 
-	numerical_Hamiltonian += - a[0]*a[1]*(Dx[0]-Dx[1])/(a[0]+a[1]+epsilon) - b[0]*b[1]*(Dy[0]-Dy[1])/(b[0]+b[1]+epsilon) - c[0]*c[1]*(Dz[0]-Dz[1])/(c[0]+c[1]+epsilon);
+	numerical_Hamiltonian += - a[0]*a[1]*(Dx[0]-Dx[1])/(a[0]+a[1]) - b[0]*b[1]*(Dy[0]-Dy[1])/(b[0]+b[1]) - c[0]*c[1]*(Dz[0]-Dz[1])/(c[0]+c[1]);
 
 	step[ind] = numerical_Hamiltonian * deltat[ind];
-
-	step[ind] = (step[ind] == NAN ) ? 0 : step[ind];
-
-	//step[ind] = numerical_Hamiltonian;
-	//step[ind] = Hamiltonian[0];
 
 }
 

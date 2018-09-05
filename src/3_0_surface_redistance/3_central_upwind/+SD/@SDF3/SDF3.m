@@ -97,6 +97,7 @@ classdef SDF3 < handle
 	methods
 		ENORK2Reinitialization(obj,iteration)	
 		NewC = ENORK2Extend(obj, C, iteration)
+		NewAF = ENORK2CentralUpwindSurfaceRedistance(obj,AF,iteration)
 	end
 
 	%%
