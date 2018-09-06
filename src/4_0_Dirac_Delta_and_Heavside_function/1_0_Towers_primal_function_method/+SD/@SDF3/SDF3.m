@@ -6,10 +6,6 @@ classdef SDF3 < handle
 		GD3 % SD.GD3 object
 	end
 
-	properties
-		F % values of the signed distance function
-	end
-
 	methods
 
 		function obj = SDF3(grid, Xm, Ym, Zm, Val)
@@ -20,32 +16,57 @@ classdef SDF3 < handle
 
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% calculus tool box : derivatives, curvature, Dirac_Delta function, Heaviside function
+% calculus tool box : derivatives, curvature, DiracDelta function, Heaviside function
 	properties
-		Fx
+		F % values of the signed distance function
+
+		Fx % gradient of F
 		Fy
 		Fz
 		FGradMag % magnitude of (Fx,Fy,Fz)
 
-		Fxx
+		Nx % normal of the level set function
+		Ny
+		Nz
+
+		Fxx % second derivatives
 		Fyy
 		Fzz
 		Fxy
 		Fyz
-		Fxz
+		Fzx
 		FLaplacian
 
 		MeanCurvature
 		GaussianCurvature
 
-		Dirac_Delta
+		HPrimal % max(0,F)
 		Heaviside
+		DiracDelta
 	end
 
 
 	methods
 		% update the above properties
 		setCalculusToolBox(obj)
+		GPUsetCalculusToolBox(obj)  
+	end
+
+	methods
+		% return area and volume of the closed surface
+		function area = calArea(obj)
+			mask = abs(obj.F) < 2*obj.GD3.Ds;
+			area = sum(obj.DiracDelta(mask)) * obj.GD3.Ds.^3;
+		end
+		function volume = calVolume(obj)
+			mask = obj.F < 2*obj.GD3.Ds;
+			volume = sum(1-obj.Heaviside(mask)) * obj.GD3.Ds.^3;
+		end
+		% surface integral
+		function integral = surfaceIntegral(obj,field)
+			mask = abs(obj.F) < 2*obj.GD3.Ds;
+			integral = sum(field(mask).*obj.DiracDelta(mask).*obj.FGradMag(mask))*obj.GD3.Ds.^3;
+		end
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -71,6 +92,9 @@ classdef SDF3 < handle
 		% kernel funcions object for ENORK2 surface redistance scheme
 			% calculate the numerical Hamiltonian for the surface redistacne equation
 			ENORK2_surface_redistance_step 
+
+		% kernel function object for GPUsetCalculusToolBox scheme
+			set_calculus_toolbox
 
 	end
 	
