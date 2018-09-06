@@ -22,12 +22,16 @@ classdef SDF3 < handle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % calculus tool box : derivatives, curvature, Dirac_Delta function, Heaviside function
 	properties
-		Fx
+		Fx % gradient of F
 		Fy
 		Fz
 		FGradMag % magnitude of (Fx,Fy,Fz)
 
-		Fxx
+		Nx % normal of the level set function
+		Ny
+		Nz
+
+		Fxx % second derivatives
 		Fyy
 		Fzz
 		Fxy
