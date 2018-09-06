@@ -19,97 +19,78 @@ classdef SDF3 < handle
 		end
 
 	end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% calculus tool box : derivatives, curvature, Dirac_Delta function, Heaviside function
+	properties
+		Fx
+		Fy
+		Fz
+		FGradMag % magnitude of (Fx,Fy,Fz)
 
-	%% GPU related properties and functions
+		Fxx
+		Fyy
+		Fzz
+		Fxy
+		Fyz
+		Fxz
+		FLaplacian
+
+		MeanCurvature
+		GaussianCurvature
+
+		Dirac_Delta
+		Heaviside
+	end
+
+
+	methods
+		% update the above properties
+		setCalculusToolBox(obj)
+	end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% GPU related properties and functions: 27 lines
 	properties
 		
 		% parameter for GPU kernel
-		ThreadBlockSize
-		GridSize
+			ThreadBlockSize
+			GridSize
 
-		% kernel funcion object for ENORK2 reinitialization scheme
-		ENORK2_boundary_correction % calculate grid step with modification near boundary
-		ENORK2_reinitiliaztion_step % calculate the numerical Hamiltonian for the Reinitalization equation
+		% kernel funcions object for ENORK2 reinitialization scheme
+			% calculate grid step with modification near boundary
+			ENORK2_boundary_correction 
+			% calculate the numerical Hamiltonian for the Reinitalization equation
+			ENORK2_reinitiliaztion_step 
 
-		% kernel function object for ENORK2 extend scheme
-		ENORK2_upwind_normal % calculate upwind normals of the level set function
-		ENORK2_extend_step % calculate the extension step
-		ENORK2_boundary_interpolate % interpolate values at the boundary
+		% kernel functions object for ENORK2 extend scheme
+			ENORK2_upwind_normal % calculate upwind normals of the level set function
+			ENORK2_boundary_interpolate % interpolate values at the boundary
+			ENORK2_extend_step % calculate the extension step
 
-		% kernel funcion object for ENORK2 surface redistance scheme
-		ENORK2_surface_redistance_step % calculate the numerical Hamiltonian for the surface redistacne equation
-
-	end
-
-	methods
-		
-		% initialize GPU functions
-		function GPUInitialize(obj)
-			
-			obj.ThreadBlockSize = [obj.GD3.mrows,ceil(512/obj.GD3.mrows),1];
-			obj.GridSize = [ceil(obj.GD3.mrows/obj.ThreadBlockSize(1)), ...
-							ceil(obj.GD3.ncols/obj.ThreadBlockSize(2)), ...
-							ceil(obj.GD3.lshts/obj.ThreadBlockSize(3))];
-
-			% functions used by reinitialization scheme and other schemes
-			system('nvcc -ptx CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.cu -o CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.ptx');
-
-			obj.ENORK2_boundary_correction = parallel.gpu.CUDAKernel('CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.ptx', ...
-																	 'CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.cu', ...
-																	 'boundary_correction');
-			obj.ENORK2_boundary_correction.ThreadBlockSize = obj.ThreadBlockSize;
-			obj.ENORK2_boundary_correction.GridSize = obj.GridSize;
-
-			obj.ENORK2_reinitiliaztion_step = parallel.gpu.CUDAKernel('CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.ptx', ...
-																	 'CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.cu', ...
-																	 're_step');
-			obj.ENORK2_reinitiliaztion_step.ThreadBlockSize = obj.ThreadBlockSize;
-			obj.ENORK2_reinitiliaztion_step.GridSize = obj.GridSize;
-
-			% functions used by the extend scheme and other schemes
-			system('nvcc -ptx CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu -o CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx');
-
-			obj.ENORK2_upwind_normal = parallel.gpu.CUDAKernel('CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx', ...
-				   											   'CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu', ...
-														   	   'upwind_normal');
-	 		obj.ENORK2_upwind_normal.ThreadBlockSize = obj.ThreadBlockSize;
-			obj.ENORK2_upwind_normal.GridSize = obj.GridSize;		
-
-			obj.ENORK2_extend_step = parallel.gpu.CUDAKernel('CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx', ...
-				   											 'CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu', ...
-														   	 'extend_step');
-	 		obj.ENORK2_extend_step.ThreadBlockSize = obj.ThreadBlockSize;
-			obj.ENORK2_extend_step.GridSize = obj.GridSize;		
-
-			obj.ENORK2_boundary_interpolate = parallel.gpu.CUDAKernel('CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx', ...
-				   											 'CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu', ...
-														   	 'boundary_interpolate');
-	 		obj.ENORK2_boundary_interpolate.ThreadBlockSize = obj.ThreadBlockSize;
-			obj.ENORK2_boundary_interpolate.GridSize = obj.GridSize;		
-
-			% functions used by the surface redistance schemes
-			system('nvcc -ptx CUDA_Code/3_0_ENORK2_SurfaceRedistance/enork2_surface_redistance.cu -o CUDA_Code/3_0_ENORK2_SurfaceRedistance/enork2_surface_redistance.ptx');
-
-			obj.ENORK2_surface_redistance_step = parallel.gpu.CUDAKernel('CUDA_Code/3_0_ENORK2_SurfaceRedistance/enork2_surface_redistance.ptx', ...
-																		 'CUDA_Code/3_0_ENORK2_SurfaceRedistance/enork2_surface_redistance.cu', ...
-																		 'surface_redistance_step');
-			obj.ENORK2_surface_redistance_step.ThreadBlockSize = obj.ThreadBlockSize;
-			obj.ENORK2_surface_redistance_step.GridSize = obj.GridSize;
-		end
-		
+		% kernel funcions object for ENORK2 surface redistance scheme
+			% calculate the numerical Hamiltonian for the surface redistacne equation
+			ENORK2_surface_redistance_step 
 
 	end
+	
+	methods 
+		GPUInitialize(obj)
+	end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% utilities : reinitliazation, extend, surface_redistance
 	methods
 		ENORK2Reinitialization(obj,iteration)	
 		NewC = ENORK2Extend(obj, C, iteration)
 		NewAF = ENORK2CentralUpwindSurfaceRedistance(obj,AF,iteration)
 	end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	%%
-	%% visualization methods
-	%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% visualization methods : 86 lines
 	methods 
 
 		% plot a 3D field on the val contour of the distance function
@@ -195,5 +176,6 @@ classdef SDF3 < handle
 		end
 
 	end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 end
