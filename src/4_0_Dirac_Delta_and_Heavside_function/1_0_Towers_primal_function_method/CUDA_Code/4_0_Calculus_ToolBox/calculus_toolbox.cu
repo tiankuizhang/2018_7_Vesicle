@@ -55,6 +55,7 @@ void set_calculus_toolbox(double * Fx, double * Fy, double * Fz, double * FGradM
 	double fy = (lsf[front] - lsf[back]) / (2*dy);
 	double fz = (lsf[up] - lsf[down]) / (2*dz);
 	double fGradMag = sqrt(fx*fx + fy*fy + fz*fz); 
+	fGradMag = max2(fGradMag, 1e-14); // avoid signularity
 	
 	Fx[ind] = fx;
 	Fy[ind] = fy;
