@@ -36,20 +36,22 @@ classdef SDF3 < handle
 		Fzz
 		Fxy
 		Fyz
-		Fxz
+		Fzx
 		FLaplacian
 
 		MeanCurvature
 		GaussianCurvature
 
-		Dirac_Delta
+		HPrimal % max(0,F)
 		Heaviside
+		DiracDelta
 	end
 
 
 	methods
 		% update the above properties
 		setCalculusToolBox(obj)
+		GPUsetCalculusToolBox(obj)  
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -75,6 +77,9 @@ classdef SDF3 < handle
 		% kernel funcions object for ENORK2 surface redistance scheme
 			% calculate the numerical Hamiltonian for the surface redistacne equation
 			ENORK2_surface_redistance_step 
+
+		% kernel function object for GPUsetCalculusToolBox scheme
+			set_calculus_toolbox
 
 	end
 	

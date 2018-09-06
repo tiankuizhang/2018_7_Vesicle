@@ -38,6 +38,9 @@ P_lap = map.GD3.Laplacian(Primal);
 Fx = map.GD3.Fx(map.F);
 Fy = map.GD3.Fy(map.F);
 Fz = map.GD3.Fz(map.F);
+Fxx = map.GD3.Fxx(map.F);
+Fyy = map.GD3.Fyy(map.F);
+Fzz = map.GD3.Fzz(map.F);
 F_lap = map.GD3.Laplacian(map.F);
 
 mag_grad = sqrt(Fx.^2+Fy.^2+Fz.^2);
@@ -61,10 +64,20 @@ ThVol = 4*pi*Radius.^3/3;
 VolRelativeError = abs((ThVol-NuVol)/ThVol)
 
 
-
-
+tic
+for i=1:100
+	map.setCalculusToolBox
+end
+toc
  
-
+tic
+for i=1:100
+	map.GPUsetCalculusToolBox
+end
+toc
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% test the calculus toolbox function
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
