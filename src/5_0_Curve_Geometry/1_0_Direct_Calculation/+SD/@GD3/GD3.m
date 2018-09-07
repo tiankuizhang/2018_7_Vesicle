@@ -250,6 +250,30 @@ classdef GD3 < handle
 			val = obj.Fxx(Field) + obj.Fyy(Field) + obj.Fzz(Field);
 		end
 
+		function [fx,fy,fz] = Gradient(obj,f)
+			fx = obj.Fx(f);
+			fy = obj.Fy(f);
+			fz = obj.Fz(f);
+		end
+
+		function [fxx,fyy,fzz,fxy,fyz,fzx] = Hessian(obj,f)
+			fxx = obj.Fxx(f);
+			fyy = obj.Fyy(f);
+			fzz = obj.Fzz(f);
+			fxy = obj.Fxy(f);
+			fyz = obj.Fyz(f);
+			fzx = obj.Fzx(f);
+		end
+
+		function [wx,wy,wz] = CrossProduct(obj,ux,uy,uz,vx,vy,vz)
+			wx = uy.*vz - uz.*vy;
+			wy = uz.*vx - ux.*vz;
+			wz = ux.*vy - uy.*vx;
+		end
+
+		function val = DotProduct(obj,ux,uy,uz,vx,vy,vz)
+			val = ux.*vx + uy.*vy + uz.*vz;
+		end
 
 	end
 
