@@ -2,21 +2,14 @@
 % Heaviside function
 function setCalculusToolBox(obj)
 
-	obj.Fx = obj.GD3.Fx(obj.F);
-	obj.Fy = obj.GD3.Fy(obj.F);
-	obj.Fz = obj.GD3.Fz(obj.F);
+	[obj.Fx,obj.Fy,obj.Fz] = obj.GD3.Gradient(obj.F);
 	obj.FGradMag = sqrt(obj.Fx.^2+obj.Fy.^2+obj.Fz.^2);
 
 	obj.Nx = obj.Fx ./ obj.FGradMag;
 	obj.Ny = obj.Fy ./ obj.FGradMag;
 	obj.Nz = obj.Fz ./ obj.FGradMag;
 
-	obj.Fxx = obj.GD3.Fxx(obj.F);
-	obj.Fyy = obj.GD3.Fyy(obj.F);
-	obj.Fzz = obj.GD3.Fzz(obj.F);
-	obj.Fxy = obj.GD3.Fxy(obj.F);
-	obj.Fyz = obj.GD3.Fyz(obj.F);
-	obj.Fzx = obj.GD3.Fzx(obj.F);
+	[obj.Fxx,obj.Fyy,obj.Fzz,obj.Fxy,obj.Fyz,obj.Fzx] = obj.GD3.Hessian(obj.F);
 	obj.FLaplacian = obj.GD3.Laplacian(obj.F);
 
 	% calculate mean curvature
@@ -44,14 +37,12 @@ function setCalculusToolBox(obj)
 	% primal of Heaviside, Heaviside, Dirac_Delta
 	obj.HPrimal = max(obj.F,0);
 
-	Px = obj.GD3.Fx(obj.HPrimal);
-	Py = obj.GD3.Fy(obj.HPrimal);
-	Pz = obj.GD3.Fz(obj.HPrimal);
+	[Px,Py,Pz] = obj.GD3.Gradient(obj.HPrimal);
 
 	P_lap = obj.GD3.Laplacian(obj.HPrimal);
 
 	% dot product of gradient of HPrimal and F
-	dot_DHPrimal_DF = Px.*obj.Fx + Py.*obj.Fy + Pz.*obj.Fz;
+	dot_DHPrimal_DF = obj.GD3.DotProduct(Px,Py,Pz,obj.Fx,obj.Fy,obj.Fz);
 
 	obj.Heaviside = dot_DHPrimal_DF ./ obj.FGradMag.^2;
 
