@@ -30,7 +30,7 @@ function AsetCalculusToolBox(obj)
 	[w2x,w2y,w2z] = obj.GD3.CrossProduct(obj.Fx,obj.Fy,obj.Fz,vx,vy,vz);
 
 	obj.GeodesicCurvature = obj.GD3.DotProduct(obj.nx,obj.ny,obj.nz,w1x+w2x,w1y+w2y,w1z+w2z) ./ NormCrossAF;
-%	obj.GeodesicCurvature = min(abs(obj.GeodesicCurvature), 5) .* sign(obj.GeodesicCurvature);
+	obj.GeodesicCurvature = min(abs(obj.GeodesicCurvature), 5) .* sign(obj.GeodesicCurvature);
 
 	%obj.NormalCurvature = obj.GD3.DotProduct(obj.Nx,obj.Ny,obj.Nz,w1x+w2x,w1y+w2y,w1z+w2z) ./ NormCrossAF;
 
