@@ -20,7 +20,8 @@ F = fun(x, y, z);
 map = SD.SDF3(grid, x, y, z, F);
 map.GPUsetCalculusToolBox;
 
-A = z - 0.3;
+%A = z - 0.3;
+A = z;
 Extend = map.ENORK2Extend(A,100);
 
 tic
@@ -35,7 +36,7 @@ toc
 Sur  = map.ENORK2Extend(tmp, 100);
 
 
-iso = -0.7:0.1:0.7;
+iso = -1.5:0.1:1.5;
 map.A = Re;
 map.AsetCalculusToolBox
 
