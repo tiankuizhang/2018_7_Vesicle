@@ -24,13 +24,17 @@ A = z - 0.3;
 Extend = map.ENORK2Extend(A,100);
 
 tic
-Re  = map.ENORK2Extend( map.ENORK2ClosetPointSurfaceRedistance(Extend,100,10), 100);
+tmp  = map.ENORK2ClosetPointSurfaceRedistance(Extend,100,10);
 toc
+Re  = map.ENORK2Extend(tmp, 100);
+
 tic
-Sur = map.ENORK2Extend( map.ENORK2ClosetPointSurfaceRedistance(Extend,10,5), 100);
+tmp  = map.ENORK2ClosetPointSurfaceRedistance(Extend,10,5);
 toc
+Sur  = map.ENORK2Extend(tmp, 100);
 
 
+iso = -0.7:0.1:0.7;
 map.A = Re;
 map.AsetCalculusToolBox
 
