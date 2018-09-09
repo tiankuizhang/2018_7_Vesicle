@@ -17,6 +17,7 @@ classdef SDF3 < handle
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % calculus tool box : derivatives, curvature, DiracDelta function, Heaviside function
+% 53 lines
 	properties
 		F % values of the signed distance function
 
@@ -71,6 +72,47 @@ classdef SDF3 < handle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	properties
+		A % values of the auxilary level set function
+		
+		Ax
+		Ay
+		Az
+		AGradMag
+
+		tx % tangent vectors of the curve
+		ty
+		tz
+
+		nx % surface normal of the curve
+		ny
+		nz
+
+		Axx % Hessian of A
+		Ayy
+		Azz
+		Axy
+		Ayz
+		Azx
+		ALaplacian
+
+		GeodesicCurvature
+		NormalCurvature
+		GeodesicTorsion
+		BPerpendicular
+
+		AHPrimal
+		AHeaviside
+		ADiracDelta
+
+	end
+
+	methods
+		AsetCalculusToolBox(obj)
+	end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% GPU related properties and functions: 27 lines
 	properties
 		
@@ -107,7 +149,7 @@ classdef SDF3 < handle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % utilities : reinitliazation, extend, surface_redistance
 	methods
-		ENORK2Reinitialization(obj,iteration)	
+		NewF = ENORK2Reinitialization(obj,F,iteration)	
 		NewC = ENORK2Extend(obj, C, iteration)
 		NewAF = ENORK2CentralUpwindSurfaceRedistance(obj,AF,iteration)
 	end
@@ -187,9 +229,11 @@ classdef SDF3 < handle
 		% plot the val contour of the field within the surface (designed for the auxilary level
 	 	% set function
 		[x,y,z]=CrossingLine(obj,iso,field, faces, verts, colors) % defined elsewhere
-		function plotIsoField(obj, iso, field)
+		function plotIsoField(obj, iso, field, PlotSurface)
 			[faces,verts,colors] = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,obj.F,0,field);
-			obj.plotSurface(0,1,'Green',1);
+			if PlotSurface
+				obj.plotSurface(0,1,'Green',1);
+			end
 			[x,y,z] = obj.CrossingLine(0,field,faces,verts,colors);
 			line(x(:),y(:),z(:),'Color','red','LineWidth',3);
 			len = length(iso);

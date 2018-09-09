@@ -1,10 +1,10 @@
 % reinitialization with ENO and RK2 scheme for iteration times
 % see 2010_Min_On reinitializing level set functions for details
-function ENORK2Reinitialization(obj,iteration)
+function NewF = ENORK2Reinitialization(obj,F,iteration)
 	
-	Fgpu = obj.F;
+	Fgpu = F;
 	
-	mask = obj.F<0;
+	mask = F<0;
 	deltat = zeros(obj.GD3.Size, 'gpuArray');
 
 	xpr = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dx;
@@ -39,6 +39,7 @@ function ENORK2Reinitialization(obj,iteration)
 		Fgpu = (Fgpu + Ftmp - step) / 2;
 	end
 
-	obj.F = Fgpu;
+	%obj.F = Fgpu;
+	NewF = Fgpu;
 
 end

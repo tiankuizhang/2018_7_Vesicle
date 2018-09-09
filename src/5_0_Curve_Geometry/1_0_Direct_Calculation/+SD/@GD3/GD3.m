@@ -275,6 +275,10 @@ classdef GD3 < handle
 			val = ux.*vx + uy.*vy + uz.*vz;
 		end
 
+		function mag = Norm(obj,vx,vy,vz)
+			mag = max(sqrt(vx.^2+vy.^2+vz.^2),1e-14);	
+		end
+		
 	end
 
 end

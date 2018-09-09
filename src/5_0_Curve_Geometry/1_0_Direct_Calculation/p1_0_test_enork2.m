@@ -1,5 +1,3 @@
-% test ENO-RK2 reinitialization scheme
-
 % create a 3D grid
 xv = linspace(-1,1,64);
 yv = xv;
@@ -20,63 +18,66 @@ fun = @(x,y,z) sqrt(x.^2+y.^2+z.^2)-Radius;
 F = fun(x, y, z);
 
 map = SD.SDF3(grid, x, y, z, F);
+map.GPUsetCalculusToolBox;
 
+A = z - 0.3;
+Extend = map.ENORK2Extend(A,100);
+Re = map.ENORK2Extend(map.ENORK2Reinitialization(Extend,100),100);
+Sur = map.ENORK2Extend(map.ENORK2CentralUpwindSurfaceRedistance(Extend,100),100);
+
+map.A = Extend;
+map.AsetCalculusToolBox
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% test convergence and accuracy of the smeared Dirac_Delta function 
-% and Heaviside function
-% following methods from towers
+figure
 
-Primal = max(map.F,0);
+subplot(2,2,1)
+map.plotField(0,map.GeodesicCurvature)
+map.plotIsoField([-0.2,-0.1,0.1,0.2],map.A,false);
 
-Px = map.GD3.Fx(Primal);
-Py = map.GD3.Fy(Primal);
-Pz = map.GD3.Fz(Primal);
+subplot(2,2,2)
+map.plotField(0,map.NormalCurvature)
+map.plotIsoField([-0.2,-0.1,0.1,0.2],map.A,false);
 
-P_lap = map.GD3.Laplacian(Primal);
+subplot(2,2,3)
+map.plotField(0,map.GeodesicTorsion)
+map.plotIsoField([-0.2,-0.1,0.1,0.2],map.A,false);
 
-Fx = map.GD3.Fx(map.F);
-Fy = map.GD3.Fy(map.F);
-Fz = map.GD3.Fz(map.F);
-Fxx = map.GD3.Fxx(map.F);
-Fyy = map.GD3.Fyy(map.F);
-Fzz = map.GD3.Fzz(map.F);
-F_lap = map.GD3.Laplacian(map.F);
-
-mag_grad = sqrt(Fx.^2+Fy.^2+Fz.^2);
-
-dot_Pirmal_F = Px.*Fx + Py.*Fy + Pz.*Fz;
-
-Heaviside = dot_Pirmal_F ./ mag_grad.^2;
-
-Dirac_Delta = P_lap ./ mag_grad.^2 - dot_Pirmal_F .* F_lap ./ mag_grad.^4;
-
-
-mask1 = abs(map.F) < 2*map.GD3.Dx;
-mask2 = map.F < 2*map.GD3.Dx;
-
-NuArea = sum(Dirac_Delta(mask1)) * map.GD3.Dx.^3;
-ThArea = 4*pi*Radius.^2;
-AreaRelativeError = abs((ThArea-NuArea)/ThArea)
-
-NuVol = sum(1-Heaviside(mask2)) * map.GD3.Dx.^3;
-ThVol = 4*pi*Radius.^3/3;
-VolRelativeError = abs((ThVol-NuVol)/ThVol)
-
-
-tic
-for i=1:100
-	map.setCalculusToolBox
-end
-toc
- 
-tic
-for i=1:100
-	map.GPUsetCalculusToolBox
-end
-toc
+subplot(2,2,4)
+map.plotField(0,map.BPerpendicular)
+map.plotIsoField([-0.2,-0.1,0.1,0.2],map.A,false);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% test the calculus toolbox function
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% compare effects of extendsion,reinitialization and surface redistance scheme on
+% calculation of curvature
+%figure
+%
+%subplot(2,2,1)
+%map.A = A;
+%map.AsetCalculusToolBox
+%map.plotField(0,map.GeodesicCurvature)
+%map.plotIsoField([-0.2,-0.1,0.1,0.2],map.A,false);
+%
+%subplot(2,2,2)
+%map.A = Extend;
+%map.AsetCalculusToolBox
+%map.plotField(0,map.GeodesicCurvature)
+%map.plotIsoField([-0.2,-0.1,0.1,0.2],map.A,false);
+%
+%subplot(2,2,3)
+%map.A = Re;
+%map.AsetCalculusToolBox
+%map.plotField(0,map.GeodesicCurvature)
+%map.plotIsoField([-0.2,-0.1,0.1,0.2],map.A,false);
+%
+%subplot(2,2,4)
+%map.A = Sur;
+%map.AsetCalculusToolBox
+%map.plotField(0,map.GeodesicCurvature)
+%map.plotIsoField([-0.2,-0.1,0.1,0.2],map.A,false);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
