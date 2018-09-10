@@ -49,6 +49,7 @@ classdef SDF3 < handle
 
 	methods
 		% update the above properties
+		setCalculustToolBox(obj)
 		GPUsetCalculusToolBox(obj)  
 	end
 
@@ -108,6 +109,7 @@ classdef SDF3 < handle
 
 	methods
 		AsetCalculusToolBox(obj)
+		GPUAsetCalculusToolBox(obj)
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -131,7 +133,8 @@ classdef SDF3 < handle
 			ENORK2_extend_step % calculate the extension step
 
 		% kernel function object for GPUsetCalculusToolBox scheme
-			set_calculus_toolbox
+			set_calculus_toolbox % set Fx,Fy ...
+			auxi_set_calculus_toolbox % set Ax,Ay ...
 
 	end
 	

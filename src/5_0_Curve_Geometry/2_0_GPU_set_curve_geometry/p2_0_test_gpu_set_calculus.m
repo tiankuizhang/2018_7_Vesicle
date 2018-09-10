@@ -18,9 +18,13 @@ fun = @(x,y,z) sqrt(x.^2+y.^2+z.^2)-Radius;
 F = fun(x, y, z);
 
 map = SD.SDF3(grid, x, y, z, F);
+map.A = z;
+
 map.GPUsetCalculusToolBox;
 map.AsetCalculusToolBox;
 
 obj = SD.SDF3(grid, x, y, z, F);
+obj.A = z;
 obj.GPUsetCalculusToolBox;
+obj.GPUAsetCalculusToolBox;
 

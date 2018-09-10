@@ -44,11 +44,18 @@ function GPUInitialize(obj)
 
 	% functions used by GPUsetCalculusTooBox scheme
 	system('nvcc -ptx CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.cu -o CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.ptx');
+
 	obj.set_calculus_toolbox = parallel.gpu.CUDAKernel('CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.ptx', ...
 													   'CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.cu', ...
 													   'set_calculus_toolbox');
 	obj.set_calculus_toolbox.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.set_calculus_toolbox.GridSize = obj.GridSize;
+
+	obj.auxi_set_calculus_toolbox = parallel.gpu.CUDAKernel('CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.ptx', ...
+													   'CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.cu', ...
+													   'auxi_set_calculus_toolbox');
+	obj.auxi_set_calculus_toolbox.ThreadBlockSize = obj.ThreadBlockSize;
+	obj.auxi_set_calculus_toolbox.GridSize = obj.GridSize;
 end
 
 
