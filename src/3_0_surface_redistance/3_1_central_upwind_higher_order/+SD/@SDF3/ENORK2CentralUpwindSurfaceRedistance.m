@@ -44,7 +44,7 @@ function NewAF = ENORK2CentralUpwindSurfaceRedistance(obj,AF,iteration)
 	Sign = zeros(obj.GD3.Size, 'gpuArray');
 	Sign(NewAF>0) = 1.;
 	Sign(NewAF<0) = -1.;
-	
+
 	% CFL condition imposed on time step
 	minx = min(xpr,xpl);
 	miny = min(ypf,ypb);

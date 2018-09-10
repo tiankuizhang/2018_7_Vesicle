@@ -29,6 +29,8 @@ tmp  = map.ENORK2ClosetPointSurfaceRedistance(Extend,100,10);
 toc
 Re  = map.ENORK2Extend(tmp, 100);
 
+map.A = Extend;
+map.AsetCalculusToolBox
 tic
 %tmp  = map.ENORK2ClosetPointSurfaceRedistance(Extend,10,5);
 tmp  = map.ENORK2CentralUpwindSurfaceRedistance(Extend,100);
