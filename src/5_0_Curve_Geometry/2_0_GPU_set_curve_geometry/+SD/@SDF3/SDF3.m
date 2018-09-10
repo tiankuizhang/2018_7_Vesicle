@@ -80,6 +80,11 @@ classdef SDF3 < handle
 		Az
 		AGradMag
 
+		Cx % cross product of grad(F) and grad(A)
+		Cy
+		Cz
+		NormCrossAF % norm of C
+
 		tx % tangent vectors of the curve
 		ty
 		tz
@@ -104,12 +109,21 @@ classdef SDF3 < handle
 		AHPrimal
 		AHeaviside
 		ADiracDelta
+		AFDiracDelta % product of ADiracDelta and FDiracDelta
 
 	end
 
 	methods
 		AsetCalculusToolBox(obj)
 		GPUAsetCalculusToolBox(obj)
+	end
+
+	methods
+		% return length of curve
+		function length = calLength(obj)
+			mask = abs(obj.F) < 2*obj.GD3.Ds & abs(obj.A) < 2*obj.GD3.Ds;
+			length = sum(obj.AFDiracDelta(mask).*obj.NormCrossAF(mask)) * obj.GD3.Ds.^3;
+		end
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

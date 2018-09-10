@@ -144,8 +144,7 @@ void set_calculus_toolbox(double * Fx, double * Fy, double * Fz, double * FGradM
 }	
 
 __global__
-void auxi_set_calculus_toolbox(double * Ax, double * Ay, double * Az, double * AGradMag, double * Tx, double * Ty, double * Tz, double * Anx, double * Any, double * Anz, double * Axx, double * Ayy, double * Azz, double * Axy, double * Ayz, double * Azx, double * ALaplacian, double * GeodesicCurvature, double * NormalCurvature, double * GeodesicTorsion, double * BPerpendicular, double * AHeaviside, double * ADiracDelta, double const * lsf, double const * AHPrimal, double const * Fx, double const * Fy, double const * Fz, double const * FGradMag, double const * Nx, double const * Ny, double const * Nz, double const * Fxx, double const * Fyy, double const * Fzz, double const * Fxy, double const * Fyz, double const * Fzx, int rows, int cols, int pges, double dx, double dy, double dz, double ds, int num_ele)
-{
+void auxi_set_calculus_toolbox(double * Ax, double * Ay, double * Az, double * AGradMag, double * ACx, double * ACy, double * ACz, double * ANormCrossAF, double * Tx, double * Ty, double * Tz, double * Anx, double * Any, double * Anz, double * Axx, double * Ayy, double * Azz, double * Axy, double * Ayz, double * Azx, double * ALaplacian, double * GeodesicCurvature, double * NormalCurvature, double * GeodesicTorsion, double * BPerpendicular, double * AHeaviside, double * ADiracDelta, double const * lsf, double const * AHPrimal, double const * Fx, double const * Fy, double const * Fz, double const * FGradMag, double const * Nx, double const * Ny, double const * Nz, double const * Fxx, double const * Fyy, double const * Fzz, double const * Fxy, double const * Fyz, double const * Fzx, int rows, int cols, int pges, double dx, double dy, double dz, double ds, int num_ele) {
 	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
 	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
@@ -182,6 +181,11 @@ void auxi_set_calculus_toolbox(double * Ax, double * Ay, double * Az, double * A
 	double Cx, Cy, Cz;
 	cross_product(Cx,Cy,Cz,fx,fy,fz,ax,ay,az);
 	double NormCrossAF = norm(Cx,Cy,Cz);
+
+	ACx[ind] = Cx;
+	ACy[ind] = Cy;
+	ACz[ind] = Cz;
+	ANormCrossAF[ind] = NormCrossAF;
 
 	double tx = Cx / NormCrossAF;
 	double ty = Cy / NormCrossAF;

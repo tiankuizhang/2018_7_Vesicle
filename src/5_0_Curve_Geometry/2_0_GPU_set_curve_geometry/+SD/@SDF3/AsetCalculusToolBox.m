@@ -4,12 +4,12 @@ function AsetCalculusToolBox(obj)
 	[obj.Ax,obj.Ay,obj.Az] = obj.GD3.Gradient(obj.A);
 	obj.AGradMag = obj.GD3.Norm(obj.Ax,obj.Ay,obj.Az);
 
-	[Cx,Cy,Cz] = obj.GD3.CrossProduct(obj.Fx,obj.Fy,obj.Fz,obj.Ax,obj.Ay,obj.Az);
-	NormCrossAF = obj.GD3.Norm(Cx,Cy,Cz);
+	[obj.Cx,obj.Cy,obj.Cz] = obj.GD3.CrossProduct(obj.Fx,obj.Fy,obj.Fz,obj.Ax,obj.Ay,obj.Az);
+	obj.NormCrossAF = obj.GD3.Norm(obj.Cx,obj.Cy,obj.Cz);
 
-	obj.tx = Cx ./ NormCrossAF;
-	obj.ty = Cy ./ NormCrossAF;
-	obj.tz = Cz ./ NormCrossAF;
+	obj.tx = obj.Cx ./ obj.NormCrossAF;
+	obj.ty = obj.Cy ./ obj.NormCrossAF;
+	obj.tz = obj.Cz ./ obj.NormCrossAF;
 
 	[obj.nx,obj.ny,obj.nz] = obj.GD3.CrossProduct(obj.tx,obj.ty,obj.tz,obj.Nx,obj.Ny,obj.Nz);
 
@@ -29,7 +29,7 @@ function AsetCalculusToolBox(obj)
 
 	[w2x,w2y,w2z] = obj.GD3.CrossProduct(obj.Fx,obj.Fy,obj.Fz,vx,vy,vz);
 
-	obj.GeodesicCurvature = obj.GD3.DotProduct(obj.nx,obj.ny,obj.nz,w1x+w2x,w1y+w2y,w1z+w2z) ./ NormCrossAF;
+	obj.GeodesicCurvature = obj.GD3.DotProduct(obj.nx,obj.ny,obj.nz,w1x+w2x,w1y+w2y,w1z+w2z) ./ obj.NormCrossAF;
 	%obj.GeodesicCurvature = min(abs(obj.GeodesicCurvature), 5) .* sign(obj.GeodesicCurvature);
 
 	%obj.NormalCurvature = obj.GD3.DotProduct(obj.Nx,obj.Ny,obj.Nz,w1x+w2x,w1y+w2y,w1z+w2z) ./ NormCrossAF;
@@ -74,6 +74,12 @@ function AsetCalculusToolBox(obj)
 	obj.AHeaviside = dot_DAHPrimal_DA ./ obj.AGradMag.^2;
 	obj.ADiracDelta = P_lap ./ obj.AGradMag.^2 - ...
 		dot_DAHPrimal_DA .* obj.ALaplacian ./ obj.AGradMag.^4;
+
+	% AFDiracDelta
+	[h1x,h1y,h1z] = obj.GD3.Gradient(obj.AHeaviside);
+	[h2x,h2y,h2z] = obj.GD3.Gradient(obj.Heaviside);
+	[chx,chy,chz] = obj.GD3.CrossProduct(h2x,h2y,h2z,h1x,h1y,h1z);
+	obj.AFDiracDelta = obj.GD3.DotProduct(obj.Cx,obj.Cy,obj.Cz,chx,chy,chz) ./ obj.NormCrossAF.^2;
 
 end
 
