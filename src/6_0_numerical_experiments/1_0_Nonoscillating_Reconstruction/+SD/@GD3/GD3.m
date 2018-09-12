@@ -281,4 +281,8 @@ classdef GD3 < handle
 		
 	end
 
+	methods
+		[WENO_back_x, WENO_fore_x, WENO_back_y, WENO_fore_y, WENO_back_z, WENO_fore_z] = WENODerivative(obj, Field);
+	end
+
 end
