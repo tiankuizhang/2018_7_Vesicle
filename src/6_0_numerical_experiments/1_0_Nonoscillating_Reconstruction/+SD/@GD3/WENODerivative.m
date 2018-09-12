@@ -57,12 +57,12 @@ function WENO_D = WENO_Derivative(v1, v2, v3, v4, v5)
 	% smoothness parameter
 	S1 = 13./12.*(v1 - 2*v2 + v3).^2 + 1./4.*(v1 - 4*v2 + 3*v3).^2;
 	S2 = 13./12.*(v2 - 2*v3 + v4).^2 + 1./4.*(v2 - v4).^2;
-	S3 = 13./12.*(v3 - 2*v4 + v5).^2 + 1./4.*(v3 - 4*v4 + 3*v5).^2;
+	S3 = 13./12.*(v3 - 2*v4 + v5).^2 + 1./4.*(3*v3 - 4*v4 + v5).^2;
 	
 	epsilon = 1e-6;
-	alpha1 = 0.1 ./ (S1 + epsilon);
-	alpha2 = 0.6 ./ (S2 + epsilon);
-	alpha3 = 0.3 ./ (S3 + epsilon);
+	alpha1 = 0.1 ./ (S1 + epsilon).^2;
+	alpha2 = 0.6 ./ (S2 + epsilon).^2;
+	alpha3 = 0.3 ./ (S3 + epsilon).^2;
 	
 	% weights for each choice
 	omega1 = alpha1 ./ (alpha1 + alpha2 + alpha3);

@@ -20,31 +20,4 @@ F = fun(x, y, z);
 map = SD.SDF3(grid, x, y, z, F);
 map.A = z;
 
-N = 100;
-
-tic
-for i=1:N
-	map.setCalculusToolBox;
-end
-toc
-
-tic
-for i=1:N
-	map.AsetCalculusToolBox;
-end
-toc
-
-obj = SD.SDF3(grid, x, y, z, F);
-obj.A = z;
-
-tic
-for i=1:N
-	obj.GPUsetCalculusToolBox;
-end
-toc
-tic
-for i=1:N
-	obj.GPUAsetCalculusToolBox;
-end
-toc
 
