@@ -16,10 +16,25 @@ function GPUInitialize(obj)
 	obj.ENORK2_boundary_correction.GridSize = obj.GridSize;
 
 	obj.ENORK2_reinitiliaztion_step = parallel.gpu.CUDAKernel('CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.ptx', ...
-															 'CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.cu', ...
-															 're_step');
+															  'CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.cu', ...
+															  're_step');
 	obj.ENORK2_reinitiliaztion_step.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.ENORK2_reinitiliaztion_step.GridSize = obj.GridSize;
+
+	% function used by WENO reinitialization scheme
+	system('nvcc -ptx CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.cu -o CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.ptx');
+
+	obj.cubic_boundary_correction = parallel.gpu.CUDAKernel('CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.ptx', ...
+															'CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.cu', ...
+															'boundary_correction');
+	obj.cubic_boundary_correction.ThreadBlockSize = obj.ThreadBlockSize;
+	obj.cubic_boundary_correction.GridSize = obj.GridSize;
+
+	obj.WENORK3_reinitialization_step = parallel.gpu.CUDAKernel('CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.ptx', ...
+															    'CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.cu', ...
+															    're_step');
+	obj.WENORK3_reinitialization_step.ThreadBlockSize = obj.ThreadBlockSize;
+	obj.WENORK3_reinitialization_step.GridSize = obj.GridSize;
 
 	% functions used by the extend scheme and other schemes
 	system('nvcc -ptx CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu -o CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx');
