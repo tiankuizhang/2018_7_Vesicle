@@ -67,7 +67,13 @@ map.GPUAsetCalculusToolBox
 	zpu = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dz;
 	zpd = ones(obj.GD3.Size, 'gpuArray') * obj.GD3.Dz;
 
-	[xpr, xpl, ypf, ypb, zpu, zpd] = feval(obj.cubic_boundary_correction, ...
+	v0 = zeros(obj.GD3.Size, 'gpuArray');
+	v1 = zeros(obj.GD3.Size, 'gpuArray');
+	v2 = zeros(obj.GD3.Size, 'gpuArray');
+	v3 = zeros(obj.GD3.Size, 'gpuArray');
+
+	[v0, v1, v2, v3, xpr, xpl, ypf, ypb, zpu, zpd] = feval(obj.cubic_boundary_correction, ...
+			v0, v1, v2, v3, ...
 			xpr, xpl, ypf, ypb, zpu, zpd, Fgpu, obj.GD3.NumElt, ...
 		    obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
 			obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz);	
@@ -85,6 +91,16 @@ map.GPUAsetCalculusToolBox
 		    obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
 			obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz);	
 
+	mask = nxpr ~= obj.GD3.Dx;
+	boundary = obj.GD3.ooo(mask);
+	current = boundary(1)
+
+	[v0(current), v1(current), v2(current), v3(current); ...
+	 ypf(current), ypb(current),zpu(current),zpd(current)]
+
+	 [xpr(current), xpl(current); ...
+	 nxpr(current),nxpl(current)]
+	
 
 	diff = xpr - nxpr;
 	max(abs(diff(:)))
