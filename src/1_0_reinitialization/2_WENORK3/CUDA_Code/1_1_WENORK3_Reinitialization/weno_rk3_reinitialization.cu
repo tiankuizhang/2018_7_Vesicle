@@ -84,7 +84,7 @@ double bisect_root(double c0, double c1, double c2, double c3, double s)
 	double b = 2*s;
 	double c = (a + b)/2;
 
-	while( fabs(b-c)>max_error){
+	while( fabs(b-c)>max_error ){
 		double fb = c0 + c1 * b + c2 * b*b + c3 * b*b*b;
 		double fc = c0 + c1 * c + c2 * c*c + c3 * c*c*c;
 		a = (fb*fc <= 0) ? c : a;
@@ -138,8 +138,8 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
 
 	// now use Newton's method to find root
 
-	//double xc = Newton_root(c0,c1,c2,c3,s);	
-	double xc = bisect_root(c0,c1,c2,c3,s);	
+	double xc = Newton_root(c0,c1,c2,c3,s);	
+	//double xc = bisect_root(c0,c1,c2,c3,s);	
 
 	return (xc - s);
 }

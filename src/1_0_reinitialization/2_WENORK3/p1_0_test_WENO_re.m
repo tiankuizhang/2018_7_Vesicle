@@ -31,16 +31,16 @@ map.GPUAsetCalculusToolBox
 %subplot(1,2,1)
 %map.plot
 %
-map.F = map.WENORK3Reinitialization(map.F, 100);
-map.GPUsetCalculusToolBox
+%map.F = map.WENORK3Reinitialization(map.F, 100);
+%map.GPUsetCalculusToolBox
 %map.GPUAsetCalculusToolBox
 %
 %subplot(1,2,2)
 %map.plot
 %
-figure(2)
+%figure(2)
 %subplot(1,2,1)
-map.plotField(0,map.MeanCurvature)
+%map.plotField(0,map.MeanCurvature)
 %map.plotSurfaceField(map.MeanCurvature, 2/Radius, 1, 'red');
 %
 %fun = @(x,y,z) (sqrt(x.^2+z.^2+y.^2) - Radius);
@@ -55,6 +55,7 @@ map.plotField(0,map.MeanCurvature)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	fun = @(x,y,z) (sqrt(x.^2+z.^2+y.^2) - Radius);
 	map.F = fun(x,y,z);
+	map.F = x;
 
 	obj = map;
 	Fgpu = map.F;
@@ -85,6 +86,8 @@ map.plotField(0,map.MeanCurvature)
 			obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz);	
 
 
+	diff = xpr - nxpr;
+	max(abs(diff(:)))
 
 
 
