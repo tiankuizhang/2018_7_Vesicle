@@ -21,34 +21,29 @@ fun = @(x,y,z) x.^2+z.^2+y.^2 - Radius^2;
 F = fun(x, y, z);
 
 map = SD.SDF3(grid, x, y, z, F);
-map.A = z;
-
-map.GPUsetCalculusToolBox
-map.GPUAsetCalculusToolBox
 
 figure(1)
 
 subplot(1,2,1)
-map.plot
+%map.plot
 
-map.F = map.WENORK3Reinitialization(map.F, 100);
+map.F = map.WENORK3Reinitialization(map.F, 80);
 map.GPUsetCalculusToolBox
-map.GPUAsetCalculusToolBox
 
-subplot(1,2,2)
+%subplot(1,2,2)
 map.plot
 
-figure(2)
-subplot(1,2,1)
-map.plotField(0,map.MeanCurvature)
+%figure(2)
+subplot(1,2,2)
+map.plotField(0,map.MeanCurvature-2/Radius)
 %map.plotSurfaceField(map.MeanCurvature, 2/Radius, 1, 'red');
 
-fun = @(x,y,z) (sqrt(x.^2+z.^2+y.^2) - Radius);
-map.F = fun(x,y,z);
-map.setCalculusToolBox
-
-subplot(1,2,2)
-map.plotField(0,map.MeanCurvature)
+%fun = @(x,y,z) (sqrt(x.^2+z.^2+y.^2) - Radius);
+%map.F = fun(x,y,z);
+%map.setCalculusToolBox
+%
+%subplot(1,2,2)
+%map.plotField(0,map.MeanCurvature)
 %map.plotSurfaceField(map.MeanCurvature, 2/Radius, 1, 'red');
 
 

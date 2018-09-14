@@ -31,8 +31,8 @@ map.GPUAsetCalculusToolBox
 % construct WENO derivatives of Field 
 
 obj = map;
-Field = x.^2 + y.^3 + z.^4 + x.*y.*z;
-% Field = z;
+%Field = x.^2 + y.^3 + z.^4 + x.*y.*z;
+ Field = x.^2.*y.^3.*z.^2;
 
 % WENO derivatives in x direction 
 DFx = (Field - Field(obj.GD3.oxo)) / obj.GD3.Dx;
@@ -73,18 +73,18 @@ v6 = circshift(DFz, [ 0, 0,-3]);
 WENO_back_z = WENO_Derivative(v1, v2, v3, v4, v5);
 WENO_fore_z = WENO_Derivative(v6, v5, v4, v3, v2);
 
-N = 100;
+N = 1;
 tic
 for i=1:N
 	[xl,xr,yb,yf,zd,zu] = map.GD3.GPUWENODerivative(Field);
 end
 toc
 
-tic
-for i=1:N
-	[xl,xr,yb,yf,zd,zu] = map.GD3.WENODerivative(Field);
-end
-toc
+%tic
+%for i=1:N
+%	[xl,xr,yb,yf,zd,zu] = map.GD3.WENODerivative(Field);
+%end
+%toc
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function WENO_D = WENO_Derivative(v1, v2, v3, v4, v5)
