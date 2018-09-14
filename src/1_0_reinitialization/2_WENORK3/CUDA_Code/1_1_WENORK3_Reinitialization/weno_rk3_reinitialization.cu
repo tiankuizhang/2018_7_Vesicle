@@ -74,32 +74,24 @@ double sp(double v1, double v0, double v2, double v3, double ds)
 
 }
 
+// given 4 points (0,v0),(s,v1),(2*s,v2),(3*s,v3) and v1*v2<0
+// calculate coefficients of the cubic interpolant c0,c1,c2,c3
+// p3(x) = c0 + c1 * x + c2 * x^2 + c3 * x^3;
 __device__ inline
-double bisect_root(double c0, double c1, double c2, double c3, double s)
+double cubic_distance(double v0, double v1, double v2, double v3, double s)
 {
+	// calculate the interpolant coefficient
+	double c0 = v0;
+ 	double c1 = (     3.0 * (v1-v0) - 3.0/2.0 * (v2-v0) + 1.0/3.0 * (v3-v0) ) / s;
+ 	double c2 = (-5.0/2.0 * (v1-v0) +     2.0 * (v2-v0) - 1.0/2.0 * (v3-v0) ) / pow(s,2);
+ 	double c3 = ( 1.0/2.0 * (v1-v0) - 1.0/2.0 * (v2-v0) + 1.0/6.0 * (v3-v0) ) / pow(s,3);
+	/* It is EXTREMELY important to use float point numbers 1.0/2.0 instead of 1/2 
+	 * the latter will give (double)(int)(1/2) = 0.0 instead of 0.5
+	 */
 
-	double max_error = 1e-14;
-
-	double a = s;
-	double b = 2*s;
-	double c = (a + b)/2;
-
-	while( fabs(b-c)>max_error ){
-		double fb = c0 + c1 * b + c2 * b*b + c3 * b*b*b;
-		double fc = c0 + c1 * c + c2 * c*c + c3 * c*c*c;
-		a = (fb*fc <= 0) ? c : a;
-		b = (fb*fc > 0) ? c : b;
-		c = (a + b)/2;
-	}
-		
-	return c;
-}
-
-__device__ inline
-double Newton_root(double c0, double c1, double c2, double c3, double s)
-{
-	double v1 = c0 + c1 * s + c2 * s*s + c3 * s*s*s;
-	double v2 = c0 + 2 * c1 * s + 4 * c2 * s*s + 8 * c3 * s*s*s;
+	// now use Newton's method to find root
+	v1 = c0 + c1 * s + c2 * s*s + c3 * s*s*s;
+	v2 = c0 + 2 * c1 * s + 4 * c2 * s*s + 8 * c3 * s*s*s;
 	
 	double xc = s + s * v1 / (v1 - v2); // initial guess
 
@@ -120,40 +112,7 @@ double Newton_root(double c0, double c1, double c2, double c3, double s)
 		xc = new_xc;
 	}
 
-	return xc;
-}
-
-
-// given 4 points (0,v0),(s,v1),(2*s,v2),(3*s,v3) and v1*v2<0
-// calculate coefficients of the cubic interpolant c0,c1,c2,c3
-// p3(x) = c0 + c1 * x + c2 * x^2 + c3 * x^3;
-__device__ inline
-double cubic_distance(double v0, double v1, double v2, double v3, double s)
-{
-	// calculate the interpolant coefficient
-	double c0 = v0;
- 	double c1 = (     3.0 * (v1-v0) - 3.0/2.0 * (v2-v0) + 1.0/3.0 * (v3-v0) ) / s;
- 	double c2 = (-5.0/2.0 * (v1-v0) +     2.0 * (v2-v0) - 1.0/2.0 * (v3-v0) ) / pow(s,2);
- 	double c3 = ( 1.0/2.0 * (v1-v0) - 1.0/2.0 * (v2-v0) + 1.0/6.0 * (v3-v0) ) / pow(s,3);
-
-	// now use Newton's method to find root
-
-	double xc = Newton_root(c0,c1,c2,c3,s);	
-	//double xc = bisect_root(c0,c1,c2,c3,s);	
-
 	return (xc - s);
-}
-
-// given 4 points (0,v0),(s,v1),(2*s,v2),(3*s,v3) and v1*v2<0
-// calculate coefficients of the cubic interpolant c0,c1,c2,c3
-// p3(x) = c0 + c1 * x + c2 * x^2 + c3 * x^3;
-__device__ inline
-void cubic_interpolant(double & c0, double & c1, double & c2, double & c3, double v0, double v1, double v2, double v3, double s)
-{
-	c0 = v0;
- 	c1 = (     3.0 * (v1-v0) - 3.0/2.0 * (v2-v0) + 1.0/3.0 * (v3-v0) ) / s;
- 	c2 = (-5.0/2.0 * (v1-v0) +     2.0 * (v2-v0) - 1.0/2.0 * (v3-v0) ) / pow(s,2);
- 	c3 = ( 1.0/2.0 * (v1-v0) - 1.0/2.0 * (v2-v0) + 1.0/6.0 * (v3-v0) ) / pow(s,3);
 }
 
 /****************************************************************************** 
@@ -183,63 +142,7 @@ double_eno_derivative eno_derivative( double v4, double v1, double v0, double v2
 
 // make corrections to xpr etc
 __global__
-void boundary_correction(double * v0, double * v1, double * v2, double * v3, double * xpr, double * xpl, double * ypf, double * ypb, double * zpu, double * zpd, double const * lsf, int num_ele, int rows, int cols, int pges, double dx, double dy, double dz)
-{
-	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
-	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
-
-	if(row_idx >= rows || col_idx >= cols || pge_idx >= pges){
-		return;
-	}
-
-	double f2;
-	int ind = sub2ind(row_idx, col_idx, pge_idx, rows, cols, pges);
-	double f0 = lsf[ind];
-
-	int right = sub2ind(row_idx, col_idx+1, pge_idx, rows, cols, pges);
-	f2 = lsf[right];
-	if(f0*f2<0){
-		int left = sub2ind(row_idx, col_idx-1, pge_idx, rows, cols, pges);
-		int right2 = sub2ind(row_idx, col_idx+2, pge_idx, rows, cols, pges);
-		xpr[ind] = cubic_distance(lsf[left], f0, f2, lsf[right2], dx);
-		xpl[right] = dx - xpr[ind];
-
-		double c0, c1, c2, c3;
-		v0[ind] = lsf[left];
-		v1[ind] = f0;
-		v2[ind] = f2;
-		v3[ind] = lsf[right2];
-		cubic_interpolant(c0,c1,c2,c3,lsf[left],f0,f2,lsf[right2],dx);
-		ypf[ind] = c0;
-		ypb[ind] = c1;
-		zpu[ind] = c2;
-		zpd[ind] = c3;
-	}
-
-//	int front = sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);
-//	f2 = lsf[front];
-//	if(f0*f2<0){
-//		int back = sub2ind(row_idx-1, col_idx, pge_idx, rows, cols, pges);
-//		int front2 = sub2ind(row_idx+2, col_idx, pge_idx, rows, cols, pges);
-//		ypf[ind] = cubic_distance(lsf[back], f0, f2, lsf[front2], dy);
-//		ypb[front] = dy - ypf[ind];
-//	}
-//
-//	int up = sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);
-//	f2 = lsf[up];
-//	if(f0*f2<0){
-//		int down = sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
-//		int up2 = sub2ind(row_idx, col_idx, pge_idx+2, rows, cols, pges);
-//		zpu[ind] = cubic_distance(lsf[down], f0, f2, lsf[up2], dz);
-//		zpd[up] = dz - zpu[ind];
-//	}
-
-}
-
-// make corrections to xpr etc
-__global__
-void boundary_correction_backup(double * xpr, double * xpl, double * ypf, double * ypb, double * zpu, double * zpd, double const * lsf, int num_ele, int rows, int cols, int pges, double dx, double dy, double dz)
+void boundary_correction(double * xpr, double * xpl, double * ypf, double * ypb, double * zpu, double * zpd, double const * lsf, int num_ele, int rows, int cols, int pges, double dx, double dy, double dz)
 {
 	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
@@ -327,6 +230,7 @@ void re_step(double * step, double const * lsf, bool const * mask, double const 
 	if (mask[ind]) {
 		step[ind] = ( sqrt(	max2(pow(min2(0,xL),2),pow(max2(0,xR),2)) + 
 							max2(pow(min2(0,yB),2),pow(max2(0,yF),2)) + 
+
 							max2(pow(min2(0,zD),2),pow(max2(0,zU),2)) ) - 1)
 					* deltat[ind] * (-1.);
 	} else{
