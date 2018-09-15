@@ -24,19 +24,32 @@ map = SD.SDF3(grid, x, y, z, F);
 
 figure(1)
 
-subplot(1,2,1)
-%map.plot
-
-map.F = map.WENORK3Reinitialization(map.F, 80);
+tic
+map.F = map.ENORK2Reinitialization(map.F, 100);
+toc
 map.GPUsetCalculusToolBox
 
-%subplot(1,2,2)
-map.plot
-
-%figure(2)
-subplot(1,2,2)
+subplot(2,2,1)
 map.plotField(0,map.MeanCurvature-2/Radius)
-%map.plotSurfaceField(map.MeanCurvature, 2/Radius, 1, 'red');
+subplot(2,2,2)
+mask = abs(map.F) < 3*map.GD3.Ds;
+map.MeanCurvature(~mask) = nan;
+map.plotSurfaceField(map.MeanCurvature, 2/Radius, 1, 'red');
+
+
+
+map.F = F;
+tic
+map.F = map.WENORK3Reinitialization(map.F, 100);
+toc
+map.GPUsetCalculusToolBox
+
+subplot(2,2,3)
+map.plotField(0,map.MeanCurvature-2/Radius)
+subplot(2,2,4)
+mask = abs(map.F) < 3*map.GD3.Ds;
+map.MeanCurvature(~mask) = nan;
+map.plotSurfaceField(map.MeanCurvature, 2/Radius, 1, 'red');
 
 %fun = @(x,y,z) (sqrt(x.^2+z.^2+y.^2) - Radius);
 %map.F = fun(x,y,z);

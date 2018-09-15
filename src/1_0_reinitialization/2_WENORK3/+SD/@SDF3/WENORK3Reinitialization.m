@@ -26,19 +26,6 @@ function NewF = WENORK3Reinitialization(obj,F,iteration)
 
 	step = zeros(obj.GD3.Size, 'gpuArray');
 
-%	for i=1:iteration
-%		step = feval(obj.ENORK2_reinitiliaztion_step, step, Fgpu, mask, deltat, ...
-%				xpr, xpl, ypf, ypb, zpu, zpd, ...
-%		    	obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
-%				obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
-%		Ftmp = Fgpu - step;
-%		step = feval(obj.ENORK2_reinitiliaztion_step, step, Ftmp, mask, deltat, ...
-%				xpr, xpl, ypf, ypb, zpu, zpd, ...
-%		    	obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
-%				obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
-%		Fgpu = (Fgpu + Ftmp - step) / 2;
-%	end
-
 	for i=1:iteration
 		step = feval(obj.WENORK3_reinitialization_step, step, Fgpu, mask, deltat, ...
 				xpr, xpl, ypf, ypb, zpu, zpd, ...
@@ -65,7 +52,6 @@ function NewF = WENORK3Reinitialization(obj,F,iteration)
 
 	end
 
-	%obj.F = Fgpu;
 	NewF = Fgpu;
 
 end
