@@ -121,24 +121,21 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
  * calculate Eno derivatives at node v0: [v4,v1,v0,v2,v3]
  ******************************************************************************/
 __device__ inline
-double_eno_derivative eno_derivative( double v4, double v1, double v0, double v2, double v3, double pr, double pl, double ds)
+void eno_derivative(double & sR, double & sL, double v4, double v1, double v0, double v2, double v3, double pr, double pl, double ds)
 {
 	double p2m;
-	double_eno_derivative eno_d;
 
 	double p2 = v1 - 2.0 * v0 + v2;
 
 	double p2r = v0 - 2.0 * v2 + v3;
 	p2m = 0.5 * min_mod(p2, p2r) / pow(ds, 2);
 	double vr = (pr==ds) ? v2 : 0;
-	eno_d.sR = (vr - v0) / pr - pr * p2m;
+	sR = (vr - v0) / pr - pr * p2m;
 
 	double p2l = v0 - 2.0 * v1 + v4;
 	p2m = 0.5 * min_mod(p2, p2l) / pow(ds, 2);
 	double vl = (pl==ds) ? v1 : 0;
-	eno_d.sL = (v0 - vl) / pl + pl * p2m;
-
-	return eno_d;
+	sL = (v0 - vl) / pl + pl * p2m;
 
 }
 
@@ -326,7 +323,7 @@ void ENO_cubic_derivative(double & d_fore, double & d_back, double h3m, double h
 // where px are level set function values at node x
 // lx, rx are distance to the left/right node 
 __device__ inline
-void weno_derivative_boundary(double & d_fore, double & d_back, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
+void weno_derivative_boundary_backup(double & d_fore, double & d_back, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
 {
 	bool out_side = p1>0 && p2>0 && p3>0 && p4>0 && p5>0 && p6>0 && p7>0;
 	bool in_side  = p1<0 && p2<0 && p3<0 && p4<0 && p5<0 && p6<0 && p7<0;
@@ -337,6 +334,34 @@ void weno_derivative_boundary(double & d_fore, double & d_back, double p1, doubl
 		double v3 = (p4 - p3) / ds;
 		double v4 = (p5 - p4) / ds;
 		double v5 = (p6 - p4) / ds;
+		double v6 = (p7 - p6) / ds;
+		d_back = weno_onesided_derivative(v1,v2,v3,v4,v5);
+		d_fore = weno_onesided_derivative(v6,v5,v4,v3,v2);
+	}// if not a boundary node, calculate weno derivatives as usual
+	else{
+		double h3m,h2m,h1m,h0,h1,h2,h3;
+		double x3m,x2m,x1m,x0,x1,x2,x3;
+		select_stencil(h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,ds);
+		ENO_cubic_derivative(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3);
+	}
+	
+}
+
+// calculate weno derivative at p4: p1<-l3-p2<-l2-p3<-l1-p4-r1->p5-r2->p6-r3->p7
+// where px are level set function values at node x
+// lx, rx are distance to the left/right node 
+__device__ inline
+void weno_derivative_boundary(double & d_fore, double & d_back, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
+{
+
+	bool cross_interface = p3*p4<0 || p4*p5<0;
+
+	if(!cross_interface){
+		double v1 = (p2 - p1) / ds;
+		double v2 = (p3 - p2) / ds;
+		double v3 = (p4 - p3) / ds;
+		double v4 = (p5 - p4) / ds;
+		double v5 = (p6 - p5) / ds;
 		double v6 = (p7 - p6) / ds;
 		d_back = weno_onesided_derivative(v1,v2,v3,v4,v5);
 		d_fore = weno_onesided_derivative(v6,v5,v4,v3,v2);
@@ -436,6 +461,7 @@ void re_step(double * step, double const * lsf, bool const * mask, double const 
 	l3 = xpl[left2];
 
 	double xR, xL;
+	//eno_derivative(xR,xL,p2,p3,p4,p5,p6,r1,l1,dx);
 	weno_derivative_boundary(xR,xL,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,dx);
 
 	int frnt1 	= sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);	
@@ -461,6 +487,7 @@ void re_step(double * step, double const * lsf, bool const * mask, double const 
 	l3 = ypb[back2];
 
 	double yF, yB;
+	//eno_derivative(yF,yB,p2,p3,p4,p5,p6,r1,l1,dy);
 	weno_derivative_boundary(yF,yB,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,dy);
 
 	int upup1	= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);	
@@ -486,8 +513,10 @@ void re_step(double * step, double const * lsf, bool const * mask, double const 
 	l3 = zpd[down2];
 
 	double zU, zD;
+	//eno_derivative(zU,zD,p2,p3,p4,p5,p6,r1,l1,dz);
 	weno_derivative_boundary(zU,zD,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,dz);
 
+	
 	if (mask[ind]) {
 		step[ind] = ( sqrt(	max2(pow(min2(0,xL),2),pow(max2(0,xR),2)) + 
 							max2(pow(min2(0,yB),2),pow(max2(0,yF),2)) + 
