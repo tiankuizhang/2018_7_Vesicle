@@ -178,6 +178,7 @@ classdef SDF3 < handle
 		NewC = ENORK2Extend(obj, C, iteration)
 		NewC = WENORK3Extend(obj, C, iteration)
 		NewA = ENORK2ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
+		NewA = WENORK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
