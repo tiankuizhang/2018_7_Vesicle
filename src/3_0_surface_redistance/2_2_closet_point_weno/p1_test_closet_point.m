@@ -21,19 +21,17 @@ map = SD.SDF3(grid, x, y, z, F);
 map.GPUsetCalculusToolBox;
 
 A = z - 0.3;
-Extend = map.ENORK2Extend(A,100);
-%Extend = map.WENORK3Extend(A,100);
+Extend = map.WENORK3Extend(A,100);
 
 tic
-%tmp  = map.ENORK2ClosetPointSurfaceRedistance(Extend,100,10);
-tmp = Extend;
+tmp  = map.WENORK3ClosetPointSurfaceRedistance(Extend,100,10);
 toc
-Re  = map.ENORK2Extend(tmp, 100);
+Re  = map.WENORK3Extend(tmp, 100);
 
 tic
-tmp  = map.ENORK2ClosetPointSurfaceRedistance(Extend,5,5);
+tmp  = map.WENORK3ClosetPointSurfaceRedistance(Extend,5,5);
 toc
-Sur  = map.ENORK2Extend(tmp, 100);
+Sur  = map.WENORK3Extend(tmp, 100);
 
 
 iso = -0.7:0.1:0.7;

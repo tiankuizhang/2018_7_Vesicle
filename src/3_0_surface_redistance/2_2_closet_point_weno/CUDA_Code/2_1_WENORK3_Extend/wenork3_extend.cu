@@ -166,7 +166,8 @@ void ENO_cubic_derivative(double & d_fore, double & d_back, double h3m, double h
 __device__ inline
 void weno_derivative_boundary(double & d_fore, double & d_back, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds, double v_fore, double v_back)
 {
-	bool cross_interface = p3*p4<0 || p4*p5<0;
+	// the condistion below is better than p3*p4<0 || p4*p5<0 
+	bool cross_interface = r1<ds || l1<ds;
 
 	if(!cross_interface){
 		double v1 = (p2 - p1) / ds;
