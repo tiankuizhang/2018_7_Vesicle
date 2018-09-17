@@ -232,7 +232,8 @@ classdef SDF3 < handle
 		% plot half of the val contour of the distance function
 		function plotIso(obj,val,trans,Color)
 			F = obj.F;
-			F(obj.GD3.Y<0) = inf;
+			%F(obj.GD3.Y<0) = inf;
+			F((obj.GD3.X+obj.GD3.Y)<0) = inf;
 			surf1 = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,val);
 			p1 = patch(surf1);
 			isonormals(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,p1)

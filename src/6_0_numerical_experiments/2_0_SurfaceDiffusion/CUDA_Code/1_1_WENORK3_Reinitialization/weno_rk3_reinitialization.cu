@@ -49,7 +49,7 @@ int sub2ind(int row_idx, int col_idx, int pge_idx, int rows, int cols, int pges)
 }
 
 /****************************************************************************** 
- * calculate distance to the bundary. 
+ * calculate distance to the bundary with qudratic weno 
  * if v0*f2<0, return distance from v0 to boundary
  ******************************************************************************/
 __device__ inline

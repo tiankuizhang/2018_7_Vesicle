@@ -56,10 +56,6 @@ MaxResolvedCurvature = 2.0 / map.GD3.Ds;
 
 for i=1:20000
 	
-	if i==738
-		keyboard
-	end
-
 	map.GPUsetCalculusToolBox
 	mask = abs(map.F)<2*map.GD3.Ds;
 	
