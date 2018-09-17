@@ -15,17 +15,19 @@
 	% subfolder to save current simulation, tagged with HOUR and a random number
 	INSTANCE = fullfile(HOME,[DATE,'_SurfaceDiffusion_',HOUR,num2str(floor(rand()*1000))]);
 	while exist(INSTANCE) % if INSTANCE folder aready exists, rename it
-		INSTANCE = fullfile(HOME,[DATE,'SurfaceDiffusion',HOUR,num2str(floor(rand()*1000))]);
+		INSTANCE = fullfile(HOME,[DATE,'_SurfaceDiffusion_',HOUR,num2str(floor(rand()*1000))]);
 	end
 	% crete folder for this simulation instance
 	mkdir(INSTANCE)
 		
 % now make subfolders to record src,img,videos etc
 	IMG = fullfile(INSTANCE,'imges');
+	VIDEO = fullfile(INSTANCE,'videos');
 	MAT = fullfile(INSTANCE,'mat');
 	SRC = fullfile(INSTANCE,'src');
 
 	mkdir(IMG);
+	mkdir(VIDEO);
 	mkdir(MAT);
 	mkdir(SRC);
 
@@ -140,8 +142,8 @@ for i=1:20
 		% save figure
 		saveas(gcf, fullfile(IMG, [sprintf('%05d',i),'isosurface','.jpg']))
 		% save current distance map
-		DistanceMap = map.F;
-		save(fullfile(MAT,['DistanceMap',sprintf('%05d',i),'.mat']), 'DistanceMap');
+		% DistanceMap = map.F;
+		% save(fullfile(MAT,['DistanceMap',sprintf('%05d',i),'.mat']), 'DistanceMap');
 
 	end
 
@@ -162,4 +164,18 @@ end
 	diary off
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% create video from imges
 
+imageNames = dir(fullfile(IMG,'*.jpg'));
+imageNames = {imageNames.name}';
+
+outputVideo = VideoWriter(fullfile(VIDEO,'SurfaceDiffusion.avi'));
+outputVideo.FrameRate = 1;
+open(outpuVideo)
+
+for ii = 1:length(imageNames)
+	img = imread(fullfile(IMG,imageNames{ii}));
+	writeVideo(outputVideo,img)
+end
+
+close(outputVideo)
