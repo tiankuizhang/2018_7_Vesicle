@@ -6,3 +6,6 @@
 
 #ignore fig files
 *.fig
+
+#ignore fig files
+*.mat
