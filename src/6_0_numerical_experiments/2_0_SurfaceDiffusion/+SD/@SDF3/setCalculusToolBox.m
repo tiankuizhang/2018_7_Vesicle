@@ -17,7 +17,7 @@ function setCalculusToolBox(obj)
 	col2 = obj.Fxy.*obj.Fx + obj.Fyy.*obj.Fy + obj.Fyz.*obj.Fz;
 	col3 = obj.Fzx.*obj.Fx + obj.Fyz.*obj.Fy + obj.Fzz.*obj.Fz;
 
-	obj.MeanCurvature = obj.FLaplacian ./ obj.FGradMag - ...
+	obj.MeanCurvature = - obj.FLaplacian ./ obj.FGradMag + ...
 		(obj.Fx.*col1 + obj.Fy.*col2 + obj.Fz.*col3) ./ obj.FGradMag.^3;
 	
 	% calculate the Gaussian Curvature

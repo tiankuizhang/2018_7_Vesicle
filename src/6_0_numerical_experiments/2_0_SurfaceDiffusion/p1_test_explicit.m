@@ -82,7 +82,7 @@ for i=1:20000
 			MaxCurvatureBeforeExtend/MaxResolvedCurvature, ...
 			MaxCurvature/MaxResolvedCurvature,Dt/map.GD3.Ds^4)
 
-	map.F = map.F + Dt * NormalSpeed;
+	map.F = map.F - Dt * NormalSpeed;
 	% there is a sign error in the calculation of MeanCurvature
 	% thus here we shall use a plus sign
 

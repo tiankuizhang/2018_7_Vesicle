@@ -116,7 +116,7 @@ void set_calculus_toolbox(double * Fx, double * Fy, double * Fz, double * FGradM
 	double col2 = fxy*fx + fyy*fy + fyz*fz;
 	double col3 = fzx*fx + fyz*fy + fzz*fz;
 	
-	MeanCurvature[ind] = fLaplacian/fGradMag - (fx*col1+fy*col2+fz*col3)/pow(fGradMag,3);
+	MeanCurvature[ind] = - fLaplacian/fGradMag + (fx*col1+fy*col2+fz*col3)/pow(fGradMag,3);
 
 	// calculate Gaussian curvature
 	col1 = (fyy*fzz-fyz*fyz)*fx + (fzx*fyz-fxy*fzz)*fy + (fxy*fyz-fzx*fyy)*fz;
