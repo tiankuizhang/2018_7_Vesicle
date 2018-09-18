@@ -139,7 +139,7 @@ classdef SDF3 < handle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% GPU related properties and functions: 27 lines
+%% GPU related properties and functions: 40 lines
 	properties
 		
 		% parameter for GPU kernel
@@ -180,6 +180,21 @@ classdef SDF3 < handle
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% simulation preparation
+	properties
+		simulationName % a string to create a unique folder 
+		INSTANCE % folder to save all simulation
+		JPG % animation snapshot
+		PNG % png version snapshot
+		GIF % gif animation
+		MAT % intermediate state of simulation 
+		SRC % copy of source code
+	end
+	methods
+		simulationStart(obj, simulationName)
+		simulationEnd(obj, videoTime)
+	end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % utilities : reinitliazation, extend, surface_redistance
@@ -194,7 +209,7 @@ classdef SDF3 < handle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% visualization methods : 86 lines
+%% visualization methods : 91 lines
 	methods 
 
 		% plot a 3D field on the val contour of the distance function

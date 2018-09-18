@@ -12,4 +12,10 @@
 
 #ignore img and video files
 *.jpg
+*.png
 *.avi
+*.gif
+
+#ignore all output from system
+*.o*
+*.e*

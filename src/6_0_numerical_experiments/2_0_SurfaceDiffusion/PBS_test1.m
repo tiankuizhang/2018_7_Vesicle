@@ -24,12 +24,14 @@
 	JPG = fullfile(INSTANCE,'jpg'); % store animation frame
 	PNG = fullfile(INSTANCE,'png'); % store animation frame with transparent background 
 	GIF = fullfile(INSTANCE,'gif'); % animation with transparent background
+	VIDEO = fullfile(INSTANCE,'videos');
 	MAT = fullfile(INSTANCE,'mat');
 	SRC = fullfile(INSTANCE,'src');
 
 	mkdir(JPG);
 	mkdir(PNG);
 	mkdir(GIF);
+	mkdir(VIDEO);
 	mkdir(MAT);
 	mkdir(SRC);
 

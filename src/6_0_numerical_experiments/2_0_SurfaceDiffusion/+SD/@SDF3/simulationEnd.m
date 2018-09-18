@@ -1,0 +1,39 @@
+% fater simulation, record simulation end time and process images
+function simulationEnd(obj, videoTime)
+
+	% log test end information
+		TestInfo = fopen(fullfile(obj.INSTANCE,'TestEndInfo'), 'w');
+		fprintf(TestInfo, 'test end time: \t');
+		fprintf(TestInfo, [datestr(datetime('now'),'yy/mm/dd HH:MM:SS'), '\n']);
+		fclose(TestInfo)
+	
+		diary off
+	
+	% create video from imges
+	
+	imageNames = dir(fullfile(obj.JPG,'*.jpg'));
+	imageNames = {imageNames.name}';
+	
+	videoOutput = fullfile(obj.GIF,[obj.simulationName,'.gif']);
+	
+	ImageNum = length(imageNames);
+	DelayTime = videoTime / ImageNum;
+	
+	for ii = 1:ImageNum
+		img = imread(fullfile(obj.JPG,imageNames{ii}));
+	
+		% save image with transparent background
+		alphaChannel = all(img>150,3);
+		imwrite(img, fullfile(obj.PNG, [sprintf('%05d',ii), '.png']), 'Alpha', double(~alphaChannel));
+		
+		% create gif with transparent background
+		[A,map] = rgb2ind(img,256);
+		BGColor = double(A(1)); % background color to be set to be transparent
+		if ii == 1
+			imwrite(A, map, videoOutput, 'gif', 'LoopCount', Inf, 'DelayTime', DelayTime, 'TransparentColor', BGColor);
+		else
+			imwrite(A, map, videoOutput, 'gif', 'WriteMode', 'append', 'DelayTime', DelayTime, 'TransparentColor', BGColor);
+		end
+	
+	end
+end

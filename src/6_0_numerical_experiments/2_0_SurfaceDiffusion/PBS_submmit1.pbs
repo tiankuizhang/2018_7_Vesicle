@@ -8,7 +8,8 @@
 #PBS -l walltime=10:00:00
 #PBS -l cput=280:00:00
 #PBS -l place=free:shared
-#PBS -N SurfaceDiffusion
+
+#PBS -N PBS_test1_m 
 
 module load matlab
 module load cuda80
@@ -17,6 +18,6 @@ module load gcc/5.5.0
 
 cd ~tiankuizhang/ClusterGit/7_Vesicle/src/6_0_numerical_experiments/2_0_SurfaceDiffusion
 
-matlab -nodisplay -nosplash < p4_test_video.m
+matlab -nodisplay -nosplash < PBS_test1.m
 
 
