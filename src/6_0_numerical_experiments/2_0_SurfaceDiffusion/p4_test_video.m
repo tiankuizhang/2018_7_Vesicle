@@ -21,12 +21,16 @@
 	mkdir(INSTANCE)
 		
 % now make subfolders to record src,img,videos etc
-	IMG = fullfile(INSTANCE,'imges');
+	JPG = fullfile(INSTANCE,'jpg'); % store animation frame
+	PNG = fullfile(INSTANCE,'PNG'); % store animation frame with transparent background 
+	GIF = fullfile(INSTANCE,'GIF'); % animation with transparent background
 	VIDEO = fullfile(INSTANCE,'videos');
 	MAT = fullfile(INSTANCE,'mat');
 	SRC = fullfile(INSTANCE,'src');
 
-	mkdir(IMG);
+	mkdir(JPG);
+	mkdir(PNG);
+	mkdir(GIF);
 	mkdir(VIDEO);
 	mkdir(MAT);
 	mkdir(SRC);
@@ -83,7 +87,7 @@ map = SD.SDF3(grid, x, y, z, F);
 
 map.F = map.WENORK3Reinitialization(map.F,100);
 
-map.plotSurface(0,1,'green',1)
+%map.plotSurface(0,1,'green',1)
 
 %load('Extend.mat')
 %
@@ -100,7 +104,11 @@ time = 0;
 
 MaxResolvedCurvature = 2.0 / map.GD3.Ds;
 
-for i=1:20
+textX = gather(map.GD3.xmin);
+textY = gather( (map.GD3.ymax + map.GD3.ymin)/2 );
+textZ = gather(map.GD3.zmin);
+
+for i=1:20000
 	
 	map.GPUsetCalculusToolBox
 	mask = abs(map.F)<2*map.GD3.Ds;
@@ -132,25 +140,27 @@ for i=1:20
 	% there is a sign error in the calculation of MeanCurvature
 	% thus here we shall use a plus sign
 
-	if mod(i,1)==0
+	if mod(i,20)==0
+		timeStr = [sprintf('%05d', i), ': ', num2str(time)];
+
 		clf
-		%map.plotSurface(0,1,'Green',1)	
+
+		subplot(1,2,1)
 		map.plot	
-		title([sprintf('%05d',i), ':', num2str(time)])
+		ax = gca;
+		ax.Visible = 'off';
+		text(textX, textY, textZ, timeStr, 'Color', 'red', 'FontSize', 14);
+
+		subplot(1,2,2)
+		map.plotSurface(0,1,'Green',1)	
+		ax = gca;
+		ax.Visible = 'off';
+		text(textX, textY, textZ, timeStr, 'Color', 'red', 'FontSize', 14);
+
 		drawnow
 
-		% save figure
-		saveas(gcf, fullfile(IMG, [sprintf('%05d',i),'isosurface','.jpg']))
-		% save current distance map
-		% DistanceMap = map.F;
-		% save(fullfile(MAT,['DistanceMap',sprintf('%05d',i),'.mat']), 'DistanceMap');
-
+		saveas(gcf, fullfile(JPG, [sprintf('%05d',i),'isosurface','.jpg']))
 	end
-
-	if mod(i,20)==0
-		%map.F = map.WENORK3Reinitialization(map.F,100);
-	end
-
 
 end
 
@@ -166,16 +176,26 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % create video from imges
 
-imageNames = dir(fullfile(IMG,'*.jpg'));
+imageNames = dir(fullfile(JPG,'*.jpg'));
 imageNames = {imageNames.name}';
 
-outputVideo = VideoWriter(fullfile(VIDEO,'SurfaceDiffusion.avi'));
-outputVideo.FrameRate = 1;
-open(outpuVideo)
+videoOutput = fullfile(GIF,'surfaceDiffusion.gif');
 
 for ii = 1:length(imageNames)
-	img = imread(fullfile(IMG,imageNames{ii}));
-	writeVideo(outputVideo,img)
+	img = imread(fullfile(JPG,imageNames{ii}));
+
+	% save image with transparent background
+	alphaChannel = all(img>150,3);
+	imwrite(img, fullfile(PNG, [sprintf('%05d',ii), '.png']), 'Alpha', double(~alphaChannel));
+	
+	% create gif with transparent background
+	[A,map] = rgb2ind(img,256);
+	BGColor = double(A(1)); % background color to be set to be transparent
+	if ii == 1
+		imwrite(A, map, videoOutput, 'gif', 'LoopCount', Inf, 'DelayTime', 1, 'TransparentColor', BGColor);
+	else
+		imwrite(A, map, videoOutput, 'gif', 'WriteMode', 'append', 'DelayTime', 1, 'TransparentColor', BGColor);
+	end
+
 end
 
-close(outputVideo)

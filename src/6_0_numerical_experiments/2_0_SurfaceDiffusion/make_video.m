@@ -1,15 +1,22 @@
-% this file will use .jpg files in the ../images folder to create a video
-
-imageNames = dir(fullfile('../images','*.jpg'));
+imageNames  = dir(fullfile('imges','*.jpg'));
 imageNames = {imageNames.name}';
 
-outputVideo = VideoWriter(fullfile('../videos','SurfaceDiffusion.avi'));
-outputVideo.FrameRate = 1;
-open(outpuVideo)
-
-for ii = 1:length(imageNames)
-	img = imread(fullfile(IMG,imageNames{ii}));
-	writeVideo(outputVideo,img)
+for ii=1:length(imageNames)
+	img = imread(fullfile('imges',imageNames{ii}));
+	alphaChannel = all(img>150,3);
+	imwrite(img, fullfile('png', [sprintf('%05d',ii), '.png']), 'Alpha', double(~alphaChannel));
 end
 
-close(outputVideo)
+filename = fullfile('gif','surfaceDiffusion.gif');
+
+for ii=1:length(imageNames)
+	img = imread(fullfile('imges',imageNames{ii}));
+	[A,map] = rgb2ind(img,256);
+	BGColor = double(A(1)); % background color
+	if ii == 1
+		imwrite(A, map, filename, 'gif', 'LoopCount', Inf, 'DelayTime', 1, 'TransparentColor', BGColor);
+	else
+		imwrite(A, map, filename, 'gif', 'WriteMode', 'append', 'DelayTime', 1, 'TransparentColor', BGColor);
+	end
+end
+
