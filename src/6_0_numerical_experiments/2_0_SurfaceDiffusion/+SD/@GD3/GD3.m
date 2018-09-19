@@ -79,6 +79,8 @@ classdef GD3 < handle
 		Lxy
 		Lyz
 		Lzx
+		LLaplacian
+		LBiLaplacian
 
 		% identity matrix
 		Idt
@@ -199,6 +201,9 @@ classdef GD3 < handle
 						+ sparse(obj.ooo(:), obj.oXz(:),	-1,	obj.NumElt, obj.NumElt) ...
 						+ sparse(obj.ooo(:), obj.oxZ(:),	-1,	obj.NumElt, obj.NumElt) ) ...
 						* (1 / (4*obj.Ds.^2)); 
+
+			obj.LLaplacian = obj.Lxx + obj.Lyy + obj.Lzz;
+			obj.LBiLaplacian = obj.LBiLaplacian;
 
 			obj.Idt = sparse(obj.ooo(:), obj.ooo(:), 1, obj.NumElt, obj.NumElt);
 		end

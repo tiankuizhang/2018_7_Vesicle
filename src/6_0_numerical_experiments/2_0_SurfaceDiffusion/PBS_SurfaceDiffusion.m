@@ -89,8 +89,6 @@ function PBS_SurfaceDiffusion(Beta, CFLNumber, iteration, frameRate)
 				MaxCurvature/MaxResolvedCurvature,Dt/map.GD3.Ds^4)
 	
 		map.F = map.F - Dt * NormalSpeed;
-		% there is a sign error in the calculation of MeanCurvature
-		% thus here we shall use a plus sign
 	
 		if mod(i,frameRate)==0
 			timeStr = [sprintf('%04d: %0.5e', i,time)];
