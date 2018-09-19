@@ -5,14 +5,14 @@
 #PBS -M tiankuizhang@email.arizona.edu
 #PBS -q standard
 #PBS -l select=1:ncpus=28:mem=168gb:ngpus=1
-#PBS -l walltime=30:00:00
+#PBS -l walltime=10:00:00
 #PBS -l cput=280:00:00
 #PBS -l place=free:shared
 
-#PBS -N PBS_SurfaceDiffusion(0.9,0,01)
+#PBS -N PBS_SurfaceDiffusion(0.6,0.05)
 
 cd ~tiankuizhang/ClusterGit/7_Vesicle/src/6_0_numerical_experiments/2_0_SurfaceDiffusion
 
-matlab -nodisplay -nosplash -r 'PBS_SurfaceDiffusion(0.9,0,01)'
+matlab -nodisplay -nosplash -r 'PBS_SurfaceDiffusion(0.6,0.05)'
 
 

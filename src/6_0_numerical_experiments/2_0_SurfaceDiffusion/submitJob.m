@@ -1,1 +1,0 @@
-system('qsub surfaceDiffusion.pbs')

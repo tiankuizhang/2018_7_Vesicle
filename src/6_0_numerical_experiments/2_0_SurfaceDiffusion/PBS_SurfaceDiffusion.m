@@ -37,7 +37,7 @@ F = min(F,F5);
 % set up the distance function
 map = SD.SDF3(grid, x, y, z, F);
 
-map.simulationStart('testSimulation');
+map.simulationStart(['Beta_',num2str(Beta),'_CFLNumber_',num2str(CFLNumber)]);
 
 map.F = map.WENORK3Reinitialization(map.F,100);
 
