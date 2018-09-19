@@ -37,7 +37,7 @@ map = SD.SDF3(grid, x, y, z, F);
 map.F = map.WENORK3Reinitialization(map.F,100);
 
 % name and size of figure
-figure(1)
+%figure(1)
 
 time = 0;
 

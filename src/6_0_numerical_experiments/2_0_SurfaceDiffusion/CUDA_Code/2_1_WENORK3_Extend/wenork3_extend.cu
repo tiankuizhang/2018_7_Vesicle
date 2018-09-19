@@ -187,6 +187,8 @@ void weno_derivative_boundary(double & d_fore, double & d_back, double p1, doubl
 	}// for nodes IMMEDIATELY adjacent to the boundary, use cubic ENO interpolant
 }
 
+/********************************************************************************
+********************************************************************************/
 __device__ inline
 double upwind_normal_point(double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
 {
@@ -288,6 +290,8 @@ void upwind_normal(double * nx, double * ny, double * nz, double const * lsf, do
 	nz[ind] = upwind_normal_point(p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,dz);
 	
 }
+/********************************************************************************
+********************************************************************************/
 
 __device__ inline
 void cubic_interp_coefficient(double & c0, double & c1, double & c2, double & c3, double v0, double v1, double v2, double v3, double s)
@@ -305,24 +309,23 @@ void cubic_interp_coefficient(double & c0, double & c1, double & c2, double & c3
 __device__ inline
 void cubic_interp(double & c_forward, double & c_backward, double dis_f, double dis_b, double ds, double v4, double v1, double v0, double v2, double v3)
 {
-	c_forward = 0;
-	c_backward = 0;
+	c_forward = 0.;
+	c_backward = 0.;
 
 	double c0,c1,c2,c3; // coefficient for cubic interpolant
 	// if there is a boundary in the forward direction
-	if(dis_f!=ds){
+	if(dis_f<ds){
 		cubic_interp_coefficient(c0,c1,c2,c3,v1,v0,v2,v3,ds);
 		double xc = ds + dis_f; // coordinate of the boundary point
 		c_forward = c0 + c1 * xc + c2 * pow(xc,2) + c3 * pow(xc,3);
 	}
 	// if there is a boundary in the backward direction
-	if(dis_b!=ds){
+	if(dis_b<ds){
 		cubic_interp_coefficient(c0,c1,c2,c3,v4,v1,v0,v2,ds);
 		double xc = 2*ds - dis_b; 
 		c_backward = c0 + c1 * xc + c2 * pow(xc,2) + c3 * pow(xc,3);
 	}
 }
-
 
 // interpolate values at boundary points
 __global__
@@ -360,6 +363,8 @@ void boundary_interpolate(double * cpr, double * cpl, double * cpf, double * cpb
 	cubic_interp(cpu[ind],cpd[ind],zpu[ind],zpd[ind],dz,lsf[down2],lsf[down],lsf[ind],lsf[up],lsf[up2]);
 
 }
+/********************************************************************************
+********************************************************************************/
 
 
 // calculate extend step
@@ -376,6 +381,14 @@ void extend_step(double * step, double const * deltat, double const * lsf, doubl
 	}
 
 	int ind = sub2ind(row_idx, col_idx, pge_idx, rows, cols, pges);
+
+	double epsilon = 1e-6 * dx;
+	if( xpr[ind]<epsilon || xpl[ind]<epsilon ||
+		ypf[ind]<epsilon || ypb[ind]<epsilon || 
+	   	zpu[ind]<epsilon || zpd[ind]<epsilon ){
+		step[ind] = 0;
+		return;
+	}// for a boundary node, do not change its value
 
 	double p1,p2,p3,p4,p5,p6,p7;
 	double r1,r2,r3,l1,l2,l3;

@@ -110,10 +110,10 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
 		xc = new_xc;
 	}
 
-	//xc = max2(xc,s);
-	//xc = min2(xc,2*s);
+	// result should lie between s and 2*s
+	xc = max2(xc,s);
+	xc = min2(xc,2*s);
 
-	//return max( (xc - s),1e-14);
 	return (xc - s);
 }
 
@@ -306,6 +306,12 @@ void re_step(double * step, double const * lsf, bool const * mask, double const 
 	}
 
 	int ind = sub2ind(row_idx, col_idx, pge_idx, rows, cols, pges);
+
+	double epsilon = 1e-6 * dx;
+	if( xpr[ind]< epsilon || xpl[ind]<epsilon || ypf[ind]<epsilon || ypb[ind]<epsilon || zpu[ind]<epsilon || zpd[ind]<epsilon ){
+		step[ind] = 0;
+		return;
+	}// for a boundary node, do not change its value
 
 	double p1,p2,p3,p4,p5,p6,p7;
 	double r1,r2,r3,l1,l2,l3;
