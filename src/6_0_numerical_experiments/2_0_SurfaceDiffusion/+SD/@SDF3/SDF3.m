@@ -181,22 +181,6 @@ classdef SDF3 < handle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% simulation preparation
-	properties
-		simulationName % a string to create a unique folder 
-		INSTANCE % folder to save all simulation
-		JPG % animation snapshot
-		PNG % png version snapshot
-		GIF % gif animation
-		MAT % intermediate state of simulation 
-		SRC % copy of source code
-	end
-	methods
-		simulationStart(obj, simulationName)
-		simulationEnd(obj, videoTime)
-	end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % utilities : reinitliazation, extend, surface_redistance
 	methods
 		NewF = ENORK2Reinitialization(obj,F,iteration)	

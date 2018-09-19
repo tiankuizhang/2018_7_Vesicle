@@ -16,7 +16,7 @@ grid = SD.GD3(x,y,z);
 
 % a cylinder with a sinusoidally varying radius
 C1 = 0.5 * pi/Alpha; % maximum radius
-C2 = 0.90 * C1/2; % C1 - 2*C2 will be the minimum radius
+C2 = 0.80 * C1/2; % C1 - 2*C2 will be the minimum radius
 
 F1 = sqrt(x.^2+y.^2) - (C1-C2*(cos(Alpha * z) + 1));
 F2 = max(z-pi/Alpha,-z-pi/Alpha);
@@ -49,7 +49,7 @@ textZ = gather(map.GD3.zmin);
 
 % CFL number should be small enough to avoid oscillation
 % 0.1 is a safe choice for forward Euler time step
-CFLNumber = 0.2;
+CFLNumber = 0.1;
 
 for i=1:2000
 	

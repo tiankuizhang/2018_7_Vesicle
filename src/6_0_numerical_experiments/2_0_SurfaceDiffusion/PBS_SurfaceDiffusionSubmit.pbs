@@ -9,10 +9,10 @@
 #PBS -l cput=280:00:00
 #PBS -l place=free:shared
 
-#PBS -N PBS_SurfaceDiffusion(0.6,0.05)
+#PBS -N PBS_SurfaceDiffusion_parameter_scan
 
 cd ~tiankuizhang/ClusterGit/7_Vesicle/src/6_0_numerical_experiments/2_0_SurfaceDiffusion
 
-matlab -nodisplay -nosplash -r 'PBS_SurfaceDiffusion(0.6,0.05)'
+matlab -nodisplay -nosplash -r 'PBS_SurfaceDiffusion(0.7,0.05,2000,20)'
 
 
