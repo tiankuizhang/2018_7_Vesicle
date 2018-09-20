@@ -2,7 +2,8 @@ function PBS_SurfaceDiffusion(Beta, CFLNumber, iteration, frameRate)
 % will try different Beta, CFLNumber
 
 	simu = SD.Simulation(mfilename,	...
-			['SurfaceDiffusion:', 'Beta_', num2str(Beta), ...
+			['SurfaceDiffusion:with_bd2stat_reinitialization', ...
+			 '_Beta_', num2str(Beta), ...
 			 '_CFLNumber_', num2str(CFLNumber), ...
 			 '_iteration_', num2str(iteration), ...
 			 '_frameRate_', num2str(frameRate)]);
@@ -45,13 +46,13 @@ function PBS_SurfaceDiffusion(Beta, CFLNumber, iteration, frameRate)
 	F = min(F,F5);
 	
 	
+	FIG = figure('Name','Surface Diffusion of perturbed cylinder','Position',[10 10 1600 800])
 	% set up the distance function
 	map = SD.SDF3(grid, x, y, z, F);
 	
-	map.F = map.WENORK3Reinitialization(map.F,100);
+	map.F = map.WENORK3Reinitialization(map.F,500);
 	
 	% name and size of figure
-	figure('Name','Surface Diffusion of perturbed cylinder','Position',[10 10 1600 800])
 	
 	time = 0;
 	
@@ -70,7 +71,7 @@ function PBS_SurfaceDiffusion(Beta, CFLNumber, iteration, frameRate)
 			min(MaxResolvedCurvature, abs(map.MeanCurvature));
 		MaxCurvatureBeforeExtend = max(abs(map.MeanCurvature(mask)));
 	
-		MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);
+		MeanCurvature = map.WENORK3Extend(map.MeanCurvature,50);
 		%MeanCurvature = map.ENORK2Extend(map.MeanCurvature,100);
 		MaxCurvature = max(abs(MeanCurvature(mask)));
 	
@@ -93,7 +94,7 @@ function PBS_SurfaceDiffusion(Beta, CFLNumber, iteration, frameRate)
 		if mod(i,frameRate)==0
 			timeStr = [sprintf('%04d: %0.5e', i,time)];
 	
-			clf
+			clf(FIG)
 	
 			subplot(1,2,1)
 			map.plot	
@@ -111,7 +112,14 @@ function PBS_SurfaceDiffusion(Beta, CFLNumber, iteration, frameRate)
 	
 			drawnow
 	
-			saveas(gcf, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
+
+		if mod(i,1) == 0
+	%		map.F = map.WENORK3Reinitialization(map.F, 100);
+		%	map.F = map.WENORK3ReKinkStat(map.F, 100);
+%			map.F = map.WENORK3ReBd1Stat(map.F, 100);
+			map.F = map.WENORK3ReBd2Stat(map.F, 100);
 		end
 	
 	end

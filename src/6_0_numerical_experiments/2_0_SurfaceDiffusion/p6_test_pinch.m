@@ -16,7 +16,7 @@ grid = SD.GD3(x,y,z);
 
 % a cylinder with a sinusoidally varying radius
 C1 = 0.5 * pi/Alpha; % maximum radius
-C2 = 0.80 * C1/2; % C1 - 2*C2 will be the minimum radius
+C2 = 0.90 * C1/2; % C1 - 2*C2 will be the minimum radius
 
 F1 = sqrt(x.^2+y.^2) - (C1-C2*(cos(Alpha * z) + 1));
 F2 = max(z-pi/Alpha,-z-pi/Alpha);
@@ -37,7 +37,7 @@ map = SD.SDF3(grid, x, y, z, F);
 map.F = map.WENORK3Reinitialization(map.F,100);
 
 % name and size of figure
-%figure(1)
+figure(1)
 
 time = 0;
 
@@ -81,7 +81,7 @@ for i=1:2000
 	% there is a sign error in the calculation of MeanCurvature
 	% thus here we shall use a plus sign
 
-	if mod(i,50)==0
+	if mod(i,10)==0
 		timeStr = [sprintf('%04d: %0.5e', i,time)];
 
 		clf
@@ -97,8 +97,8 @@ for i=1:2000
 	% the system should have enough time for scission between two reinitialization step
 	% otherwise, scission will never happen
 	% it is best to avoid reinitialization all together
-	if mod(i,50)==0
-		%map.F = map.WENORK3Reinitialization(map.F, 100);
+	if mod(i,1)==0
+		map.F = map.WENORK3Reinitialization(map.F, 100);
 	end
 
 end
