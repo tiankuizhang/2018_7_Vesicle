@@ -54,8 +54,38 @@ fftS = fftn(reshape(S,grid.Size));
 %fftS = fftS ./ (1 - a * ( kx.^2 + ky.^2 + kz.^2) );
 fftS = fftS ./ (1 + b * ( grid.kx.^2 + grid.ky.^2 + grid.kz.^2).^2 );
 F3 = ifftn(fftS);
-F3 = abs(F3);
+F3 = real(F3);
 toc
+
+tic
+F4 = run_gmres(Opgpu, S, grid, b);
+toc
+
+function x1 = run_gmres(Opgpu, Sgpu, grid, b)
+
+	%x1 = gmres(@afun, Sgpu, [], 1e-6, 300, @mfun);
+	x1 = gmres(Opgpu, Sgpu, [], 1e-12, 300, @mfun);
+
+	function y = afun(x)
+		y = Opgpu * x;
+	end
+
+	function y = mfun(S)
+		fftS = fftn(reshape(S,grid.Size));
+		fftS = fftS ./ (1 + b * ( grid.kx.^2 + grid.ky.^2 + grid.kz.^2).^2 );
+		y = real(ifftn(fftS));
+		y = reshape(y, [grid.NumElt, 1]);
+	end
+	
+end
+
+
+
+
+
+
+
+
 
 
 
