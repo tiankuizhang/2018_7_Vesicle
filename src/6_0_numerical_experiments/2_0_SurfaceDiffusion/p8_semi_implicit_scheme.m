@@ -36,6 +36,32 @@ map = SD.SDF3(grid, x, y, z, F);
 
 map.F = map.WENORK3Reinitialization(map.F,100);
 
+BiLaplacian = map.GD3.LBiLaplacian;
+Opgpu = 0.001 * BiLaplacian + map.GD3.Idt;
+Opcpu = gather(Opgpu);
+Scpu = rand(128^3, 1);
+%Scpu = rand(64^3, 1);
+Sgpu = gpuArray(Scpu);
+
+[L, U] = ilu(Opcpu, struct('type','nofill','milu','row'));
+LUgpu = gpuArray(L*U);
+
+
+tic
+for i=1:100
+	B= map.GD3.Laplacian(map.GD3.Laplacian(map.F));
+end
+toc
+tic
+for i=1:100
+	B = map.GD3.LBiLaplacian * map.F(:);
+end
+toc
+
+%[L, U] = ilu(B, struct('type','nofill','milu','row'))
+% F_new = gmres(B, S,[], 1e-12, 300, L,U)
+% F_new = bicgstab(B, S, 1e-12, 300, L,U)
+
 % name and size of figure
 %figure(1)
 

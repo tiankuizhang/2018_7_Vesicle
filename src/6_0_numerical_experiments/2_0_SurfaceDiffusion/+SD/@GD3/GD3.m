@@ -10,7 +10,6 @@ classdef GD3 < handle
 		Dy % spacing in y direction
 		Dz % spacing in z direction
 		Ds % mean spacing
-		EltVol % volume of one element
 		ncols % number of grid points in x direction
 		mrows % number of grid points in y direction
 		lshts % number of grid points in z direction
@@ -23,9 +22,6 @@ classdef GD3 < handle
 		zmin % min value of coordinate z
 		zmax % max value of coordinate z
 		BOX % bounding box of grid domain
-		PX	% permutation of X for griddedInterpolant
-		PY	% permutation of Y for griddedInterpolant
-		PZ	% permutation of Z for griddedInterpolant
 		
 		% index matrix and the shifted index matrices
 		ooo % not shifted
@@ -37,13 +33,6 @@ classdef GD3 < handle
 		ooZ
 		ooz
 
-		soXo % smae with above definition but without periodic boundary condtion
-		soxo
-		sYoo
-		syoo
-		sooZ
-		sooz
-		
 		YXo
 		yXo
 		Yxo
@@ -85,6 +74,11 @@ classdef GD3 < handle
 		% identity matrix
 		Idt
 
+		% frequency domain
+		kx
+		ky
+		kz
+
 	end
 
 	methods
@@ -97,7 +91,6 @@ classdef GD3 < handle
 			obj.Dy = Ym(2,1,1) - Ym(1,1,1);
 			obj.Dz = Zm(1,1,2) - Zm(1,1,1);
 			obj.Ds = (obj.Dx + obj.Dy + obj.Dz) / 3;
-			obj.EltVol = obj.Dx * obj.Dy * obj.Dz;
 			obj.Size = size(Xm);
 			obj.mrows = obj.Size(1);
 			obj.ncols = obj.Size(2);
@@ -110,9 +103,6 @@ classdef GD3 < handle
 			obj.ymax = Ym(end,1,1);
 			obj.zmax = Zm(1,1,end);
 			obj.BOX = gather( [obj.xmin obj.xmax obj.ymin obj.ymax obj.zmin obj.zmax] );
-			obj.PX = permute(Xm, [2 1 3]);
-			obj.PY = permute(Ym, [2 1 3]);
-			obj.PZ = permute(Zm, [2 1 3]);
 
 			% the largest integer uint32 can represent is 2^32~4e9~(1.6e3)^3
 			% the largest integer uint16 can represent is 2^16~6e4~(4e2)^40^3
@@ -125,13 +115,6 @@ classdef GD3 < handle
 			obj.yoo = circshift(obj.ooo, [	1	0	0	]);
 			obj.ooZ = circshift(obj.ooo, [	0	0	-1	]);
 			obj.ooz = circshift(obj.ooo, [	0	0	1	]);
-
-			obj.soXo = obj.oXo; obj.soXo(:,end,:) = obj.ooo(:,end,:);
-			obj.soxo = obj.oxo; obj.soxo(:,1  ,:) = obj.ooo(:,1  ,:);
-			obj.sYoo = obj.Yoo; obj.sYoo(end,:,:) = obj.ooo(end,:,:);
-			obj.syoo = obj.yoo; obj.syoo(1  ,:,:) = obj.ooo(1  ,:,:);
-			obj.sooZ = obj.ooZ; obj.sooZ(:,:,end) = obj.ooo(:,:,end);
-			obj.sooz = obj.ooz; obj.sooz(:,:,1  ) = obj.ooo(:,:,1   );
 
 			obj.YXo = circshift(obj.ooo, [	-1	-1	0	]);
 			obj.yXo = circshift(obj.ooo, [	1	-1	0	]); 
@@ -203,9 +186,26 @@ classdef GD3 < handle
 						* (1 / (4*obj.Ds.^2)); 
 
 			obj.LLaplacian = obj.Lxx + obj.Lyy + obj.Lzz;
-			obj.LBiLaplacian = obj.LBiLaplacian;
+			obj.LBiLaplacian = obj.LLaplacian * obj.LLaplacian;
 
 			obj.Idt = sparse(obj.ooo(:), obj.ooo(:), 1, obj.NumElt, obj.NumElt);
+
+			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			% set coordinate for the frequency domain
+			kxcpu = 2 * pi * (-obj.ncols/2 : obj.ncols/2-1) / (obj.ncols * obj.Dx);
+			kycpu = 2 * pi * (-obj.mrows/2 : obj.mrows/2-1) / (obj.mrows * obj.Dy);
+			kzcpu = 2 * pi * (-obj.lshts/2 : obj.lshts/2-1) / (obj.lshts * obj.Dz);
+
+			kxcpu = fftshift(kxcpu);
+			kycpu = fftshift(kycpu);
+			kzcpu = fftshift(kzcpu);
+
+			[kx, ky, kz] = meshgrid(kxcpu, kycpu, kzcpu);
+
+			obj.kx = gpuArray(kx);
+			obj.ky = gpuArray(ky);
+			obj.kz = gpuArray(kz);
+			%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 		end
 
 		% create a sparse diagonal matrix out of a field
