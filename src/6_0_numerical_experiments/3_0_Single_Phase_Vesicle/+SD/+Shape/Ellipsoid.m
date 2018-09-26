@@ -2,15 +2,22 @@
 % the default half axis are a=1,b=1,c for oblate
 % and a=1, b=c for prolate 
 
-function [x,y,z,f] = Ellipsoid(N, reducedVolume, TYPE)
+function [x,y,z,f] = Ellipsoid(Size, reducedVolume, TYPE)
 
 	% create a meshgrid
+	Nx = Size(1);
+	Ny = Size(2);
+	Nz = Size(3);
+
 	xmin = -1.0;
 	xmax = 1.0;
-	xcenter = (xmin + xmax) / 2;
-	xv = linspace(xmin, xmax, N);
-	yv = xv;
-	zv = xv;
+	xv = linspace(xmin, xmax, Nx);
+	dx = xv(2) - xv(1);
+
+	yv = ( (1-Ny)/2. : (Ny-1)/2 ) * dx;
+	zv = ( (1-Nz)/2. : (Nz-1)/2 ) * dx;
+	zmin = zv(1);
+	zmax = zv(end);
 
 	[x,y,z] = meshgrid(xv,yv,zv);
 
@@ -35,7 +42,7 @@ function [x,y,z,f] = Ellipsoid(N, reducedVolume, TYPE)
 		a = 0.35 * (xmax - xmin);
 		b = a;
 		c = a * cq;
-		f = sqrt((x-xcenter).^2 ./ a^2 + (y-xcenter).^2 ./ b^2 + (z-xcenter).^2 ./ c^2) - 1;
+		f = sqrt(x.^2 ./ a^2 + y.^2 ./ b^2 + z.^2 ./ c^2) - 1;
 	end
 
 	if TYPE=='Prolate' || TYPE=='P' || TYPE=='p'
@@ -51,10 +58,10 @@ function [x,y,z,f] = Ellipsoid(N, reducedVolume, TYPE)
 			save(FILE,'rv','c')
 		end
 		cq = interp1(rv, c, reducedVolume); 
-		a = 0.35 * (xmax - xmin);
+		a = 0.35 * (zmax - zmin);
 		b = a * cq;
 		c = b;
-		f = sqrt((x-xcenter).^2 ./ b^2 + (y-xcenter).^2 ./ c^2 + (z-xcenter).^2 ./ a^2) - 1;
+		f = sqrt(x.^2 ./ b^2 + y.^2 ./ c^2 + z.^2 ./ a^2) - 1;
 	end
 
 

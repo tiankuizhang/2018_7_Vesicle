@@ -244,12 +244,12 @@ classdef SDF3 < handle
 		end
 
 		% plot the val contour of the distance function
-		function plotSurface(obj,val,trans,Color, time)
+		function plotSurface(obj,val,trans,FaceColor, EdgeColor)
 			F = obj.F;
 			surf1 = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,val);
 			p1 = patch(surf1);
 			isonormals(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,p1)
-			set(p1,'FaceColor',Color,'EdgeColor','none','FaceAlpha',trans);
+			set(p1,'FaceColor',FaceColor,'EdgeColor',EdgeColor,'FaceAlpha',trans);
 			axis(obj.GD3.BOX)
 			daspect([1 1 1])
 			view(3); 
