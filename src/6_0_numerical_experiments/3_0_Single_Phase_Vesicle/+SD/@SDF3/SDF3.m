@@ -188,9 +188,6 @@ classdef SDF3 < handle
 	methods
 		NewF = ENORK2Reinitialization(obj,F,iteration)	
 		NewF = WENORK3Reinitialization(obj,F,iteration)	
-		NewF = WENORK3ReKinkStat(obj,F,iteration)
-		NewF = WENORK3ReBd1Stat(obj,F,iteration)
-		NewF = WENORK3ReBd2Stat(obj,F,iteration)
 		NewC = ENORK2Extend(obj, C, iteration)
 		NewC = WENORK3Extend(obj, C, iteration)
 		NewA = ENORK2ClosetPointSurfaceRedistance(obj,A,iter1,iter2)

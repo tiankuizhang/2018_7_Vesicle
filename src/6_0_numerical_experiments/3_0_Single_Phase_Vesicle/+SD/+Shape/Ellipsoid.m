@@ -1,7 +1,8 @@
 % return an Ellipsoid with the specified reduced volume
-% the default half axis are a=1,b=1,c from interpolant data
+% the default half axis are a=1,b=1,c for oblate
+% and a=1, b=c for prolate 
 
-function [x,y,z,f] = Ellipsoid(N, reducedVolume)
+function [x,y,z,f] = Ellipsoid(N, reducedVolume, TYPE)
 
 	% create a meshgrid
 	xmin = -1.0;
@@ -18,26 +19,45 @@ function [x,y,z,f] = Ellipsoid(N, reducedVolume)
 	z = gpuArray(z);
 
 	% load reducedvolume vs c data if exists, otherwise calculate it
-	FILE = 'EllipsoidReducedVolume.mat';
-	if exist(FILE)
-		load(FILE)
-	else
-		c = 0.01:0.01:0.99;
-		rv = zeros(size(c));
-		for ii = 1:length(c);
-			rv(ii) = ReducedVolume(1,1,c(ii));
+	if TYPE=='Oblate' || TYPE=='O' || TYPE=='o'
+		FILE = fullfile('+SD','+Shape','EllipsoidOblateReducedVolume.mat');
+		if exist(FILE)
+			load(FILE)
+		else
+			c = 0.01:0.01:0.99;
+			rv = zeros(size(c));
+			for ii = 1:length(c);
+				rv(ii) = ReducedVolume(1,1,c(ii));
+			end
+			save(FILE,'rv','c')
 		end
-		save(FILE,'rv','c')
+		cq = interp1(rv, c, reducedVolume); 
+		a = 0.35 * (xmax - xmin);
+		b = a;
+		c = a * cq;
+		f = sqrt((x-xcenter).^2 ./ a^2 + (y-xcenter).^2 ./ b^2 + (z-xcenter).^2 ./ c^2) - 1;
 	end
 
-	cq = interp1(rv, c, reducedVolume); 
+	if TYPE=='Prolate' || TYPE=='P' || TYPE=='p'
+		FILE = fullfile('+SD','+Shape','EllipsoidProlateReducedVolume.mat');
+		if exist(FILE)
+			load(FILE)
+		else
+			c = 0.01:0.01:0.99;
+			rv = zeros(size(c));
+			for ii = 1:length(c);
+				rv(ii) = ReducedVolume(1,c(ii),c(ii));
+			end
+			save(FILE,'rv','c')
+		end
+		cq = interp1(rv, c, reducedVolume); 
+		a = 0.35 * (xmax - xmin);
+		b = a * cq;
+		c = b;
+		f = sqrt((x-xcenter).^2 ./ b^2 + (y-xcenter).^2 ./ c^2 + (z-xcenter).^2 ./ a^2) - 1;
+	end
 
-	% create a level set function whose zero contour is the desired shape
-	a = 0.35 * (xmax - xmin);
-	b = a;
-	c = a * cq;
 
-	f = sqrt((x-xcenter).^2 ./ a^2 + (y-xcenter).^2 ./ b^2 + (z-xcenter).^2 ./ c^2) - 1;
 
 end
 
