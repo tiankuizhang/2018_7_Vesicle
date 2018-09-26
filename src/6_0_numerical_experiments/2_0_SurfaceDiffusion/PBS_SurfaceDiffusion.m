@@ -46,13 +46,13 @@ function PBS_SurfaceDiffusion(Beta, CFLNumber, iteration, frameRate)
 	F = min(F,F5);
 	
 	
+	% name and size of figure
 	FIG = figure('Name','Surface Diffusion of perturbed cylinder','Position',[10 10 1600 800])
 	% set up the distance function
 	map = SD.SDF3(grid, x, y, z, F);
 	
 	map.F = map.WENORK3Reinitialization(map.F,500);
 	
-	% name and size of figure
 	
 	time = 0;
 	

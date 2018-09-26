@@ -54,7 +54,7 @@ map.F = map.WENORK3Reinitialization(map.F,100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % name and size of figure
-FIG  = figure(1)
+FIG = figure('Name','Surface Diffusion of perturbed cylinder','Position',[10 10 1600 800])
 
 time = 0;
 
@@ -112,7 +112,17 @@ for i=1:20000
 
 		clf(FIG)
 
+		subplot(1,2,1)
 		map.plot	
+		ax = gca;
+		ax.Visible = 'off';
+		th=text(textX, textY, textZ, timeStr, 'Color', 'y', 'FontSize', 14);
+		set(th,'BackgroundColor', 'k', 'EdgeColor', 'w')
+
+		subplot(1,2,2)
+		map.plotSurface(0,1,'Green',1)	
+		ax = gca;
+		ax.Visible = 'off';
 		th=text(textX, textY, textZ, timeStr, 'Color', 'y', 'FontSize', 14);
 		set(th,'BackgroundColor', 'k', 'EdgeColor', 'w')
 
