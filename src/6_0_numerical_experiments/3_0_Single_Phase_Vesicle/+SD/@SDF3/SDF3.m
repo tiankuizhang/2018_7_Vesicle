@@ -249,7 +249,7 @@ classdef SDF3 < handle
 			surf1 = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,val);
 			p1 = patch(surf1);
 			isonormals(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,F,p1)
-			set(p1,'FaceColor',FaceColor,'EdgeColor',EdgeColor,'FaceAlpha',trans);
+			set(p1,'FaceColor',FaceColor,'EdgeColor',EdgeColor,'FaceAlpha',trans,'EdgeAlpha',0.1);
 			axis(obj.GD3.BOX)
 			daspect([1 1 1])
 			view(3); 
