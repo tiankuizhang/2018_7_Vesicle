@@ -1,15 +1,15 @@
-function processImage(videoTime)
+function processImage(videoTime, simulationName)
 
 	% create video from imges
 	
 		JPG = '../jpg';
-		GIG = '../gif';
+		GIF = '../gif';
 		PNG = '../png';
 
 		imageNames = dir(fullfile(JPG,'*.jpg'));
 		imageNames = {imageNames.name}';
 	
-		videoOutput = fullfile(GIF,[obj.simulationName,'.gif']);
+		videoOutput = fullfile(GIF,[simulationName,'.gif']);
 	
 		ImageNum = length(imageNames);
 		DelayTime = videoTime / ImageNum;

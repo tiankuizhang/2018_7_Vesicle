@@ -49,8 +49,8 @@ function PerturbedCylinderPinch(Beta, CFLNumber, iteration, SampleRate, Archive,
 				MaxCurvature/MaxResolvedCurvature,Dt/map.GD3.Ds^4)
 	
 		% now smooth NormalSpeed
-		normalSpeedSmoothed = smoothFFT(map, NormalSpeed, Dt, 0.5 );
-		%normalSpeedSmoothed = smoothGMRES(map, NormalSpeed, Dt, 0.5);
+		%normalSpeedSmoothed = smoothFFT(map, NormalSpeed, Dt, 0.5 );
+		normalSpeedSmoothed = smoothGMRES(map, NormalSpeed, Dt, 0.5);
 
 		normalSpeedSmoothed = map.WENORK3Extend(normalSpeedSmoothed, 100);
 		map.F = map.F - Dt * normalSpeedSmoothed;
@@ -100,12 +100,13 @@ end
 function normalSpeedSmoothed = smoothGMRES(map, NormalSpeed, Dt, Alpha)
 
 	% operator to be solved
-	Op = map.GD3.Idt + alpha * Dt * map.GD3.LBiLaplacian;
+	Op = map.GD3.Idt + Alpha * Dt * map.GD3.LBiLaplacian;
 	% reshape RHS into a colum vector
 	S = reshape(NormalSpeed, [map.GD3.NumElt, 1]);
 
 %	normalSpeedSmoothed = gmres(@afun, S, [], 1e-12, 300, @mfun);
 	normalSpeedSmoothed = gmres(Op, S, [], 1e-12, 300, @mfun);
+	normalSpeedSmoothed = reshape(normalSpeedSmoothed, map.GD3.Size);
 
 	% functional form for Op
 	function y = afun(x)
