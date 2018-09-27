@@ -2,7 +2,7 @@
 % this will run a simulation for pinch of a perturbed cylinder
 % Archive is a bool class determining wether to archive this simulation instance or not
 % if Archive is true, then a simu object is used to save figures etc
-function PerturbedCylinderPinch(Beta, CFLNumber, iteration, SampleRate, Archive, simu)
+function PerturbedCylinderPinch(Beta, CFLNumber, iteration, SampleRate, ReinitializationRate, Archive, simu)
 
 	% create the initial distance map
 	[x,y,z,f] = SD.Shape.PerturbedCylinder([128,128,128], Beta);
@@ -79,6 +79,10 @@ function PerturbedCylinderPinch(Beta, CFLNumber, iteration, SampleRate, Archive,
 			if Archive
 				saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
 			end
+		end
+
+		if mod(i,ReinitializationRate)==0
+			map.F = map.WENORK3Reinitialization(map.F, 500);
 		end
 
 	end
