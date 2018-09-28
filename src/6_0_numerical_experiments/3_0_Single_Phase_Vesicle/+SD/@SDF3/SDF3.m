@@ -185,6 +185,7 @@ classdef SDF3 < handle
 
 		% kernel function for numerical Hamiltonian for surface consevation law
 			surface_conservation_step
+			spatial_finite_volume_step
 
 	end
 	
@@ -206,6 +207,7 @@ classdef SDF3 < handle
 
 	methods
 		NewC = WENORK3SurfaceConservationLaw(obj,C,vx,vy,vz,iter,dt);
+		NewC = SurfaceConservationLaw(obj,C,vx,vy,vz,iter,dt);
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

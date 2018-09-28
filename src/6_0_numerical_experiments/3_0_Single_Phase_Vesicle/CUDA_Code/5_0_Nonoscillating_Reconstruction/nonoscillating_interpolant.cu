@@ -194,6 +194,55 @@ void surface_conservation_step(double * step, double const * vx, double const * 
 				 lsf[ind] * vd[ind]) * dt ;
 }	
 
+// calculate numerical Hamiltonian for surface conservation law equation with finite volume method
+// assuming c field and velocity field are already extended
+__global__
+void spatial_finite_volume_step(double * step, double const * vx, double const * vy, double const * vz, double const * lsf, double dt, int rows, int cols, int pges, double dx, double dy, double dz)
+{
+	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
+	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
+
+	if(row_idx >= rows || col_idx >= cols || pge_idx >= pges){
+		return;
+	}
+
+	int ind = sub2ind(row_idx, col_idx, pge_idx, rows, cols, pges);
+
+	double numericalFlux = 0; 
+	double v_upwind, v_dnwind; // speed in the upwind and downwind direction
+	int dnwind, upwind;
+
+	// use linear approximation to calculate speed at the boundary
+	dnwind 	= sub2ind(row_idx, col_idx+1, pge_idx, rows, cols, pges);
+	upwind 	= sub2ind(row_idx, col_idx-1, pge_idx, rows, cols, pges);
+
+	v_dnwind = (vx[dnwind] + vx[ind]) / 2.0;
+	v_upwind = (vx[upwind] + vx[ind]) / 2.0; 
+
+	numericalFlux += (min2(0,v_dnwind) * lsf[dnwind] - max2(0,v_dnwind) * lsf[ind]) * dy * dz;
+	numericalFlux += (max2(0,v_upwind) * lsf[upwind] - min2(0,v_upwind) * lsf[ind]) * dy * dz;
+
+	dnwind 	= sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);	
+	upwind 	= sub2ind(row_idx-1, col_idx, pge_idx, rows, cols, pges);
+
+	v_dnwind = (vy[dnwind] + vy[ind]) / 2.0;
+	v_upwind = (vy[upwind] + vy[ind]) / 2.0; 
+
+	numericalFlux += (min2(0,v_dnwind) * lsf[dnwind] - max2(0,v_dnwind) * lsf[ind]) * dx * dz;
+	numericalFlux += (max2(0,v_upwind) * lsf[upwind] - min2(0,v_upwind) * lsf[ind]) * dx * dz;
+
+	dnwind	= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);	
+	upwind 	= sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
+
+	v_dnwind = (vz[dnwind] + vz[ind]) / 2.0;
+	v_upwind = (vz[upwind] + vz[ind]) / 2.0; 
+
+	numericalFlux += (min2(0,v_dnwind) * lsf[dnwind] - max2(0,v_dnwind) * lsf[ind]) * dx * dy;
+	numericalFlux += (max2(0,v_upwind) * lsf[upwind] - min2(0,v_upwind) * lsf[ind]) * dx * dy;
+
+	step[ind] = numericalFlux * dt / (dx * dy * dz); 
+}
 
 
 
