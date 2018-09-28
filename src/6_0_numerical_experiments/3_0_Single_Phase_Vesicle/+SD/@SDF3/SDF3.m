@@ -79,6 +79,17 @@ classdef SDF3 < handle
 					- 2 * obj.Ny .* obj.Nz .* fyz ...
 					- 2 * obj.Nz .* obj.Nx .* fzx ;
 		end
+		% surface divergence of vector field
+		function val = SurfaceDivergence(obj, vx, vy, vz)
+			[vxx, vxy, vxz] = obj.GD3.Gradient(vx);
+			[vyx, vyy, vyz] = obj.GD3.Gradient(vy);
+			[vzx, vzy, vzz] = obj.GD3.Gradient(vz);
+			
+			val = vxx + vyy + vzz ...
+					- obj.Nx .* obj.GD3.DotProduct(obj.Nx, obj.Ny, obj.Nz, vxx, vxy, vxz) ...
+					- obj.Ny .* obj.GD3.DotProduct(obj.Nx, obj.Ny, obj.Nz, vyx, vyy, vyz) ...
+					- obj.Nz .* obj.GD3.DotProduct(obj.Nx, obj.Ny, obj.Nz, vzx, vzy, vzz);
+		end
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -157,10 +168,6 @@ classdef SDF3 < handle
 			cubic_boundary_correction
 			% calculate the reinitialization step
 			WENORK3_reinitialization_step
-			WENORK3_re_step_kink
-			WENORK3_re_step_bo1
-			WENORK3_re_step_bo2
-
 
 		% kernel functions object for ENORK2 extend scheme
 			ENORK2_upwind_normal % calculate upwind normals of the level set function
@@ -175,6 +182,9 @@ classdef SDF3 < handle
 		% kernel function object for GPUsetCalculusToolBox scheme
 			set_calculus_toolbox % set Fx,Fy ...
 			auxi_set_calculus_toolbox % set Ax,Ay ...
+
+		% kernel function for numerical Hamiltonian for surface consevation law
+			surface_conservation_step
 
 	end
 	
@@ -193,6 +203,10 @@ classdef SDF3 < handle
 		NewA = ENORK2ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 		NewA = WENORK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 	end
+
+	methods
+		NewC = WENORK3SurfaceConservationLaw(obj,C,vx,vy,vz,iter,dt);
+	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -209,7 +223,8 @@ classdef SDF3 < handle
 				TriMesh.vertices(:,1), TriMesh.vertices(:,2), TriMesh.vertices(:,3), 'linear');
 			% plot surface mesh 
 			patch('Vertices',TriMesh.vertices,'Faces',TriMesh.faces, ...
-				  'FaceVertexCData',SurfField,'FaceColor','interp','EdgeColor','none')
+				  'FaceVertexCData',SurfField,'FaceColor','interp',...
+				  'EdgeColor','k','EdgeAlpha',0.1)
 			axis equal
 			patch('Vertices',TriMesh.vertices,'Faces',TriMesh.faces,'FaceVertexCData',SurfField,...
 				'FaceColor','interp','EdgeColor','none')

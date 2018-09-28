@@ -97,10 +97,16 @@ function GPUInitialize(obj)
 	system('nvcc -ptx CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.cu -o CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.ptx');
 
 	obj.GD3.weno_derivative = parallel.gpu.CUDAKernel('CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.ptx', ...
-												  'CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.cu', ...
-												  'weno_derivative');
+												  	  'CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.cu', ...
+												  	  'weno_derivative');
 	obj.GD3.weno_derivative.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.GD3.weno_derivative.GridSize = obj.GridSize;
+
+	obj.surface_conservation_step = parallel.gpu.CUDAKernel('CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.ptx', ...
+												  	  'CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.cu', ...
+												  	  'surface_conservation_step');
+	obj.surface_conservation_step.ThreadBlockSize = obj.ThreadBlockSize;
+	obj.surface_conservation_step.GridSize = obj.GridSize;
 end
 
 

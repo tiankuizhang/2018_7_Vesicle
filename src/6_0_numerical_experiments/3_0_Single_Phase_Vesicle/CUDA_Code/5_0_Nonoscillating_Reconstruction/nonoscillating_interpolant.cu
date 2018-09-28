@@ -122,6 +122,78 @@ void weno_derivative(double * WENO_back_x, double * WENO_fore_x, double * WENO_b
 }	
 
 
+// calculate numerical Hamiltonian for surface conservation law equation with input vx,vy,vz and
+// surface divergence vd of v
+__global__ 
+void surface_conservation_step(double * step, double const * vx, double const * vy, double const * vz, double const * vd, double const * lsf, double dt, int rows, int cols, int pges, double dx, double dy, double dz)
+{
+	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
+	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
+
+	if(row_idx >= rows || col_idx >= cols || pge_idx >= pges){
+		return;
+	}
+
+	int ind = sub2ind(row_idx, col_idx, pge_idx, rows, cols, pges);
+
+	int rght1 	= sub2ind(row_idx, col_idx+1, pge_idx, rows, cols, pges);
+	int rght2 	= sub2ind(row_idx, col_idx+2, pge_idx, rows, cols, pges);
+	int rght3 	= sub2ind(row_idx, col_idx+3, pge_idx, rows, cols, pges);
+	int left1 	= sub2ind(row_idx, col_idx-1, pge_idx, rows, cols, pges);
+	int left2 	= sub2ind(row_idx, col_idx-2, pge_idx, rows, cols, pges);
+	int left3 	= sub2ind(row_idx, col_idx-3, pge_idx, rows, cols, pges);
+
+	double v1 = (lsf[left2] - lsf[left3]) / dx;
+	double v2 = (lsf[left1] - lsf[left2]) / dx;
+	double v3 = (lsf[ind]   - lsf[left1]) / dx;
+	double v4 = (lsf[rght1] - lsf[ind])   / dx;
+	double v5 = (lsf[rght2] - lsf[rght1]) / dx;
+	double v6 = (lsf[rght3] - lsf[rght2]) / dx;
+
+	double xL= weno_onesided_derivative(v1,v2,v3,v4,v5);
+	double xR= weno_onesided_derivative(v6,v5,v4,v3,v2);
+
+	int frnt1 	= sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);	
+	int frnt2 	= sub2ind(row_idx+2, col_idx, pge_idx, rows, cols, pges);	
+	int frnt3 	= sub2ind(row_idx+3, col_idx, pge_idx, rows, cols, pges);	
+	int back1 	= sub2ind(row_idx-1, col_idx, pge_idx, rows, cols, pges);
+	int back2 	= sub2ind(row_idx-2, col_idx, pge_idx, rows, cols, pges);
+	int back3 	= sub2ind(row_idx-3, col_idx, pge_idx, rows, cols, pges);
+
+	v1 = (lsf[back2] - lsf[back3]) / dy;
+	v2 = (lsf[back1] - lsf[back2]) / dy;
+	v3 = (lsf[ind]	 - lsf[back1]) / dy;
+	v4 = (lsf[frnt1] - lsf[ind])  / dy;
+	v5 = (lsf[frnt2] - lsf[frnt1]) / dy;
+	v6 = (lsf[frnt3] - lsf[frnt2]) / dy;
+	
+	double yB = weno_onesided_derivative(v1,v2,v3,v4,v5);
+	double yF = weno_onesided_derivative(v6,v5,v4,v3,v2);
+
+	int upup1	= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);	
+	int upup2	= sub2ind(row_idx, col_idx, pge_idx+2, rows, cols, pges);	
+	int upup3	= sub2ind(row_idx, col_idx, pge_idx+3, rows, cols, pges);	
+	int down1 	= sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
+	int down2 	= sub2ind(row_idx, col_idx, pge_idx-2, rows, cols, pges);
+	int down3 	= sub2ind(row_idx, col_idx, pge_idx-3, rows, cols, pges);
+
+	v1 = (lsf[down2] - lsf[down3]) / dz;
+	v2 = (lsf[down1] - lsf[down2]) / dz;
+	v3 = (lsf[ind]	 - lsf[down1]) / dz;
+	v4 = (lsf[upup1] - lsf[ind])   / dz;
+	v5 = (lsf[upup2] - lsf[upup1]) / dz;
+	v6 = (lsf[upup3] - lsf[upup2]) / dz;
+
+	double zD = weno_onesided_derivative(v1,v2,v3,v4,v5);
+	double zU = weno_onesided_derivative(v6,v5,v4,v3,v2);
+
+	step[ind] = (min2(0,vx[ind]) * xR + max2(0,vx[ind]) * xL + 
+				 min2(0,vy[ind]) * yF + max2(0,vy[ind]) * yB + 
+				 min2(0,vz[ind]) * zU + max2(0,vz[ind]) * zD +
+				 lsf[ind] * vd[ind]) * dt ;
+}	
+
 
 
 
