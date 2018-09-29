@@ -43,6 +43,8 @@ localArea = ones(map.GD3.Size,'gpuArray'); % measurement of local compression an
 % dynamics
 time = 0;
 for i = 1:Iteration
+	keyboard
+
 	map.GPUsetCalculusToolBox
 	CurrentArea = map.calArea;
 	DiffArea = 100 * (CurrentArea - InitialArea)/InitialArea;
@@ -92,14 +94,10 @@ for i = 1:Iteration
 	ExplicitImplicitNullLevelSetEquation(map, normalSpeed, Dt, 0.5);
 
 	% time step localArea field
-	maxSpeed = max(abs(normalSpeed(:)));
-	Dt_c = CFLNumber_c * map.GD3.Ds / maxSpeed;  
-	iter_c = max(ceil(Dt/Dt_c), 30) + 10;
-	Dt_c = Dt / iter_c;
 	vx = normalSpeed .* map.Nx;
 	vy = normalSpeed .* map.Ny;
 	vz = normalSpeed .* map.Nz;
-	localArea = map.WENORK3SurfaceConservationLaw(localArea,vx,vy,vz,iter_c,Dt_c);
+	localArea = ExplicitImplicitLocalArea(map,vx,vy,vz,localArea,Dt);
 	localArea = map.WENORK3Extend(localArea, 100);
 	TotalC = map.surfaceIntegral(localArea);
 
@@ -115,11 +113,11 @@ for i = 1:Iteration
 		%map.plotSurface(0,1,'Green','black')	
 		map.plotField(0,sign(localArea-1))
 		ax = gca;
-		ax.Visible = 'off';
+		%ax.Visible = 'off';
 		th=text(textX, textY, textZ, timeStr, 'Color', 'y', 'FontSize', 14);
 		set(th,'BackgroundColor', 'k', 'EdgeColor', 'w')
 
-		%zoom(1.3)
+		%zoom(1.10)
 
 		drawnow
 
@@ -133,6 +131,19 @@ for i = 1:Iteration
 	end
 
 
+end
+
+function NewLA = ExplicitImplicitLocalArea(obj,vx,vy,vz,localArea, dt)
+	NewLA = localArea;
+	vd = obj.SurfaceDivergence(vx,vy,vz);
+	%vd = 0;
+	%vx = 0; vy = 0; vz = 0;
+	step = zeros(obj.GD3.Size, 'gpuArray');
+	step = feval(obj.surface_conservation_step, step, vx, vy, vz, vd, NewLA, dt, ...
+			obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
+			obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz);
+	stepSmoothed = smoothGMRES(obj, step, dt, 0.5);
+	NewLA = NewLA - stepSmoothed;
 end
 
 function ExplicitImplicitNullLevelSetEquation(map, normalSpeed, Dt, Alpha)
