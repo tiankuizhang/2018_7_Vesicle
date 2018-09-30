@@ -6,8 +6,8 @@ function [X,Y,Z,f,Nx,Ny,Nz,MC,SL_MC] = RedBloodCell(Size,R)
 	Ny = Size(2);
 	Nz = Size(3);
 
-	xmin = -1.1*R;
-	xmax =  1.1*R;
+	xmin = -1.3*R;
+	xmax =  1.3*R;
 	xv = linspace(xmin,xmax,Nx);
 	dx = xv(2) - xv(1);
 

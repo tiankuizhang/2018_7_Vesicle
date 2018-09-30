@@ -219,46 +219,116 @@ classdef GD3 < handle
 			val = (Field(obj.oXo) - Field(obj.oxo)) / (2*obj.Dx);
 		end
 
+		function val = Fx4(obj, Field)
+			F2  = circshift(Field,[0,-2,0]); 
+			Fm2 = circshift(Field,[0, 2,0]);
+			val = (-F2 + 8*Field(obj.oXo) - 8*Field(obj.oxo) + Fm2) / (12*obj.Dx);
+		end
+
 		function val = Fy(obj, Field)
 			val = (Field(obj.Yoo) - Field(obj.yoo)) / (2*obj.Dy);
+		end
+
+		function val = Fy4(obj, Field)
+			F2  = circshift(Field,[-2,0,0]);
+			Fm2 = circshift(Field,[ 2,0,0]);
+			val = (-F2 + 8*Field(obj.Yoo) - 8*Field(obj.yoo) + Fm2) / (12*obj.Dy); 
 		end
 
 		function val = Fz(obj, Field)
 			val = (Field(obj.ooZ) - Field(obj.ooz)) / (2*obj.Dz);
 		end
 
+		function val = Fz4(obj, Field)
+			F2  = circshift(Field,[0,0,-2]);
+			Fm2 = circshift(Field,[0,0, 2]);
+			val = (-F2 + 8*Field(obj.ooZ) - 8*Field(obj.ooz) + Fm2) / (12*obj.Dz); 
+		end
+
 		function val = Fxx(obj, Field)
 			val = (Field(obj.oXo) - 2*Field + Field(obj.oxo)) / (obj.Dx.^2);
+		end
+
+		function val = Fxx4(obj, Field)
+			F2  = circshift(Field,[0,-2,0]); 
+			Fm2 = circshift(Field,[0, 2,0]);
+			val = (-F2 + 16*Field(obj.oXo) -30*Field + 16*Field(obj.oxo) - Fm2) / (12*obj.Dx.^2);
 		end
 
 		function val = Fyy(obj, Field)
 			val = (Field(obj.Yoo) - 2*Field + Field(obj.yoo)) / (obj.Dy.^2);
 		end
 
+		function val = Fyy4(obj, Field)
+			F2  = circshift(Field,[-2,0,0]);
+			Fm2 = circshift(Field,[ 2,0,0]);
+			val = (-F2 + 16*Field(obj.Yoo) - 30*Field + 16*Field(obj.yoo) - Fm2) / (12*obj.Dy.^2); 
+		end
+
 		function val = Fzz(obj, Field)
 			val = (Field(obj.ooZ) - 2*Field + Field(obj.ooz)) / (obj.Dz.^2);
+		end
+
+		function val = Fzz4(obj, Field)
+			F2  = circshift(Field,[0,0,-2]);
+			Fm2 = circshift(Field,[0,0, 2]);
+			val = (-F2 + 16*Field(obj.ooZ) - 30*Field + 16*Field(obj.ooz) - Fm2) / (12*obj.Dz.^2); 
 		end
 
 		function val = Fxy(obj, Field)
 			val = (Field(obj.YXo) + Field(obj.yxo) - Field(obj.Yxo) - Field(obj.yXo)) / (4*obj.Ds.^2);
 		end
 
+		function val = Fxy4(obj, Field)
+			F22 = circshift(Field,[-2,-2,0]);
+			Fm2m2 = circshift(Field,[2,2,0]);
+			F2m2 = circshift(Field,[-2,2,0]);
+			Fm22 = circshift(Field,[2,-2,0]);
+			val = (-F22 - Fm2m2 + F2m2 + Fm22 + 16*Field(obj.YXo) + 16 * Field(obj.yxo) - 16 * Field(obj.Yxo) - 16 * Field(obj.yXo)) / (48*obj.Dx*obj.Dy);
+		end	
+
 		function val = Fyz(obj, Field)
 			val = (Field(obj.YoZ) + Field(obj.yoz) - Field(obj.Yoz) - Field(obj.yoZ)) / (4*obj.Ds.^2);
 		end
+
+		function val = Fyz4(obj, Field)
+			F22 = circshift(Field,[-2,0,-2]);
+			Fm2m2 = circshift(Field,[2,0,2]);
+			F2m2 = circshift(Field,[-2,0,2]);
+			Fm22 = circshift(Field,[2,0,-2]);
+			val = (-F22 - Fm2m2 + F2m2 + Fm22 + 16*Field(obj.YoZ) + 16 * Field(obj.yoz) - 16 * Field(obj.Yoz) - 16 * Field(obj.yoZ)) / (48*obj.Dz*obj.Dy);
+		end	
 
 		function val = Fzx(obj, Field)
 			val = (Field(obj.oXZ) + Field(obj.oxz) - Field(obj.oXz) - Field(obj.oxZ)) / (4*obj.Ds.^2);
 		end
 
+		function val = Fzx4(obj, Field)
+			F22 = circshift(Field,[0,-2,-2]);
+			Fm2m2 = circshift(Field,[0,2,2]);
+			F2m2 = circshift(Field,[0,2,-2]);
+			Fm22 = circshift(Field,[0,-2,2]);
+			val = (-F22 - Fm2m2 + F2m2 + Fm22 + 16*Field(obj.oXZ) + 16 * Field(obj.oxz) - 16 * Field(obj.oXz) - 16 * Field(obj.oxZ)) / (48*obj.Dz*obj.Dx);
+		end	
+
 		function val = Laplacian(obj, Field)
 			val = obj.Fxx(Field) + obj.Fyy(Field) + obj.Fzz(Field);
+		end
+
+		function val = Laplacian4(obj, Field)
+			val = obj.Fxx4(Field) + obj.Fyy4(Field) + obj.Fzz4(Field);
 		end
 
 		function [fx,fy,fz] = Gradient(obj,f)
 			fx = obj.Fx(f);
 			fy = obj.Fy(f);
 			fz = obj.Fz(f);
+		end
+
+		function [fx,fy,fz] = Gradient4(obj,f)
+			fx = obj.Fx4(f);
+			fy = obj.Fy4(f);
+			fz = obj.Fz4(f);
 		end
 
 		function [fxx,fyy,fzz,fxy,fyz,fzx] = Hessian(obj,f)
@@ -268,6 +338,15 @@ classdef GD3 < handle
 			fxy = obj.Fxy(f);
 			fyz = obj.Fyz(f);
 			fzx = obj.Fzx(f);
+		end
+
+		function [fxx,fyy,fzz,fxy,fyz,fzx] = Hessian4(obj,f)
+			fxx = obj.Fxx4(f);
+			fyy = obj.Fyy4(f);
+			fzz = obj.Fzz4(f);
+			fxy = obj.Fxy4(f);
+			fyz = obj.Fyz4(f);
+			fzx = obj.Fzx4(f);
 		end
 
 		function [wx,wy,wz] = CrossProduct(obj,ux,uy,uz,vx,vy,vz)
