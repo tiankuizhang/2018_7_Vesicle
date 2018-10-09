@@ -17,5 +17,5 @@
 *.gif
 
 #ignore all output from system
-*.o*
-*.e*
+*.o1*
+*.e1*
