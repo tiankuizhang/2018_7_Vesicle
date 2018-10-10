@@ -19,3 +19,6 @@
 #ignore all output from system
 *.o1*
 *.e1*
+
+#ignor excutable files
+*.o
