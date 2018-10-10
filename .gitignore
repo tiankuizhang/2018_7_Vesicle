@@ -20,5 +20,8 @@
 *.o1*
 *.e1*
 
-#ignor excutable files
+#ignore excutable files
 *.o
+
+#ignore mex files
+*.mexa64
