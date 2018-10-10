@@ -20,7 +20,7 @@ function DM = DistanceMatrixCSRBF(dsites,ctrs,ep)
 	else
 		[tmp,tmp,Tree] = kdtree(dsites,[]);
 		for j = 1:M
-			[pts,dist,idx] = kdrangequery(Tree,dsites(j,:),support);
+			[pts,dist,idx] = kdrangequery(Tree,ctrs(j,:),support);
 			newentries = length(idx);
 			iend = iend + newentries;
 			rowidx(istart:iend) = idx';
