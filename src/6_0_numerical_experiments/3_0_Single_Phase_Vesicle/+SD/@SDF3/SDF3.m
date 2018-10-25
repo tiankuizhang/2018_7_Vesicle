@@ -174,11 +174,17 @@ classdef SDF3 < handle
 			% calculate the numerical Hamiltonian for the Reinitalization equation
 			ENORK2_reinitiliaztion_step 
 
-		% kern functio oect forer WENORK3 reinitialization  scheme
+		% kernel function object for WENORK3 reinitialization  scheme
 			% calculate distance to the nearby nodes including boundary nodes
 			cubic_boundary_correction
 			% calculate the reinitialization step
 			WENORK3_reinitialization_step
+
+		% kernel function object WENO5RK3 reinitialization scheme
+			% calculate distance to the bounary along x,y,z directions
+			sixth_boundary_correction
+			% calculate the reinitialization step
+			WENO5RK3_reinitialization_step
 
 		% kernel functions object for ENORK2 extend scheme
 			ENORK2_upwind_normal % calculate upwind normals of the level set function
@@ -208,8 +214,9 @@ classdef SDF3 < handle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % utilities : reinitliazation, extend, surface_redistance
 	methods
-		NewF = ENORK2Reinitialization(obj,F,iteration)	
-		NewF = WENORK3Reinitialization(obj,F,iteration)	
+		NewF = ENORK2Reinitialization(obj,F,iteration)
+		NewF = WENORK3Reinitialization(obj,F,iteration)
+		NewF = WENO5RK3Reinitialization(obj,F,iteration)
 		NewC = ENORK2Extend(obj, C, iteration)
 		NewC = WENORK3Extend(obj, C, iteration)
 		NewA = ENORK2ClosetPointSurfaceRedistance(obj,A,iter1,iter2)

@@ -1,7 +1,40 @@
 /*******************************************************************************
  * use weno derivative to calculate the numerical Hamiltonian for reinitialization
  * scheme
+ * 5th order polynomial interpolation will be used to locate the boundary
+ * weno53 scheme will be implemented on a nonuniform stencil near boundary 
+ * central weno 6th order accurate scheme will be applied at nodes not immediately
+ * next to the boundary
  ******************************************************************************/
+// a Polynomial template that will accept any number of coefficients
+template<int n> class Poly{
+private:
+	double coef[n];
+public:
+		__device__
+		Poly<n>(double const * c) {
+			for(int i=0; i<=n; i++) coef[i] = c[i];
+		}
+		__device__
+		double operator()(double x){
+			double val(0);
+			for(int i=0; i<=n; i++) val += coef[i]*pow(x,i);
+			return val;
+		}
+};
+
+// a template function that will find root of T(x) between x1 and x2 with a tolerance tol
+template<typename T>
+__device__ double zeroin(T func, double x1, double x2, double tol)
+{
+	int const ITMAX = 100; // Maximum allowed number of iterations
+	double EPS = numeric_limits<double>::epsilon();
+
+	double a=x1,b=x2,c=x2,d,e,fa=func(a),fb=func(b),fc,p,q,r,s,toler,xm;
+	return b;
+};
+
+
 __device__ inline
 double max2(double x, double y)
 {
@@ -37,7 +70,7 @@ double sign(double x)
 // periodic boundary conditions are assumed
 __device__ inline
 int sub2ind(int row_idx, int col_idx, int pge_idx, int rows, int cols, int pges)
-{	
+{
 	int row_idxn = min2(rows-1, max2(0, row_idx));
 	int col_idxn = min2(cols-1, max2(0, col_idx));
 	int pge_idxn = min2(pges-1, max2(0, pge_idx));
@@ -88,6 +121,11 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
 	 * the latter will give (double)(int)(1/2) = 0.0 instead of 0.5
 	 */
 
+	//Poly3 p3(c0,c1,c2,c3);
+	double coef[4] = {c0,c1,c2,c3};
+	//Polynomial p3(3,coef);
+	Poly<3> p3(coef);
+
 	// now use Newton's method to find root
 	double xc = s + s * v1 / (v1 - v2); // initial guess
 
@@ -98,7 +136,8 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
 
 	while( diff>max_error && iter<max_iter){
 		// Newton's method
-		double f = c0 + c1 * xc + c2 * xc*xc + c3 * xc*xc*xc;
+		//double f = c0 + c1 * xc + c2 * xc*xc + c3 * xc*xc*xc;
+		double f = p3(xc);
 		double d = c1 + 2 * c2 * xc + 3 * c3 * xc * xc;
 		double new_xc = xc - f / d;
 
