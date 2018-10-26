@@ -6,35 +6,6 @@
  * central weno 6th order accurate scheme will be applied at nodes not immediately
  * next to the boundary
  ******************************************************************************/
-// a Polynomial template that will accept any number of coefficients
-template<int n> class Poly{
-private:
-	double coef[n];
-public:
-		__device__
-		Poly<n>(double const * c) {
-			for(int i=0; i<=n; i++) coef[i] = c[i];
-		}
-		__device__
-		double operator()(double x){
-			double val(0);
-			for(int i=0; i<=n; i++) val += coef[i]*pow(x,i);
-			return val;
-		}
-};
-
-// a template function that will find root of T(x) between x1 and x2 with a tolerance tol
-template<typename T>
-__device__ double zeroin(T func, double x1, double x2, double tol)
-{
-	int const ITMAX = 100; // Maximum allowed number of iterations
-	double EPS = numeric_limits<double>::epsilon();
-
-	double a=x1,b=x2,c=x2,d,e,fa=func(a),fb=func(b),fc,p,q,r,s,toler,xm;
-	return b;
-};
-
-
 __device__ inline
 double max2(double x, double y)
 {
@@ -65,6 +36,89 @@ double sign(double x)
 	return (x>0) ? 1.0 : -1.0;
 }
 
+// a Polynomial template that will accept any number of coefficients
+template<int n> class Poly{
+private:
+	double coef[n];
+public:
+		__device__
+		Poly<n>(double const * c) {
+			for(int i=0; i<=n; i++) coef[i] = c[i];
+		}
+		__device__
+		double operator()(double x){
+			double val(0);
+			for(int i=0; i<=n; i++) val += coef[i]*pow(x,i);
+			return val;
+		}
+};
+
+// a template function that will find root of T(x) between x1 and x2 with a tolerance toler
+template<typename T>
+__device__ double zeroin(T func, double x1, double x2, double toler)
+{
+	int const ITMAX = 100; // Maximum allowed number of iterations
+
+	double d,e,p,q,r,s,xm;
+	double a=x1, b=x2, c=x2;
+	double fa=func(a), fb=func(b), fc=fb;
+
+	for(int iter=0; iter<ITMAX; iter++){
+		// make sure result be bound by b,c; b is the best result; a is the previous result
+		if((fb > 0.0 && fc > 0.0) || (fb < 0.0 && fc < 0.0)){
+			c = a; fc = fa;
+			d = b - a; e = d;
+		}
+		if(fabs(fc) < fabs(fb)){
+			a = b; b = c; c = a;
+			fa = fb; fb = fc; fc = fa;
+		}
+		// convergence check
+		xm = 0.5*(c-b);
+		if(fabs(xm) <= toler || fb == 0.0) return b;
+		// choose bisection or interpolation
+		if(fabs(e) < toler || abs(fa) <= abs(fb)){
+			// bounds decreasing too slowly, use bisection
+			d = xm; e = xm;
+		}else{
+			// attempt interpolation
+			s = fb/fa;
+			if(a == c){
+				// linear interpolation
+				p = 2.0 * xm * s;
+				q = 1.0 - s;
+			}else{
+				// inverse quadratice interpolation
+				q = fa/fc;
+				r = fb/fc;
+				p = s*(2.0*xm*q*(q - r) - (b - a)*(r - 1.0));
+				q = (q - 1.0)*(r - 1.0)*(s - 1.0);
+			}
+			if (p > 0) q = -q;
+			p = fabs(p);
+			// is interpolation acceptable
+			double Min1 = 3.0 * xm * q - abs(toler*q);
+			double Min2 = abs(e*q);
+			if(2.0*p < min2(Min1,Min2)){
+				// accept interpolation
+				e = d; d = p/q;
+			}else{
+				// use bisection
+				d = xm; e = d;
+			}
+		}
+		// move last best guess to a
+		a = b; fa = fb;
+		// elvaluate new trial root
+		if(fabs(d) > toler){
+			b = b + d;
+		}else{
+			b += sign(xm) * toler;
+		}
+		fb = func(b);
+	}
+	return b;
+};
 
 // convert subindex to linear index
 // periodic boundary conditions are assumed
@@ -79,6 +133,7 @@ int sub2ind(int row_idx, int col_idx, int pge_idx, int rows, int cols, int pges)
 
 	return ind;
 }
+
 
 /****************************************************************************** 
  * calculate distance to the bundary with qudratic eno 
@@ -127,25 +182,27 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
 	Poly<3> p3(coef);
 
 	// now use Newton's method to find root
-	double xc = s + s * v1 / (v1 - v2); // initial guess
+//	double xc = s + s * v1 / (v1 - v2); // initial guess
+//
+//	int iter = 0;
+//	int const max_iter = 50;
+//	double const max_error = 1e-14;
+//	double diff = 1;
+//
+//	while( diff>max_error && iter<max_iter){
+//		// Newton's method
+//		//double f = c0 + c1 * xc + c2 * xc*xc + c3 * xc*xc*xc;
+//		double f = p3(xc);
+//		double d = c1 + 2 * c2 * xc + 3 * c3 * xc * xc;
+//		double new_xc = xc - f / d;
+//
+//		diff = fabs (f / d);
+//		iter++;
+//
+//		xc = new_xc;
+//	}
 
-	int iter = 0;
-	int const max_iter = 50;
-	double const max_error = 1e-14;
-	double diff = 1;
-
-	while( diff>max_error && iter<max_iter){
-		// Newton's method
-		//double f = c0 + c1 * xc + c2 * xc*xc + c3 * xc*xc*xc;
-		double f = p3(xc);
-		double d = c1 + 2 * c2 * xc + 3 * c3 * xc * xc;
-		double new_xc = xc - f / d;
-
-		diff = fabs (f / d);
-		iter++;
-
-		xc = new_xc;
-	}
+	double xc = zeroin<Poly<3> >(p3,s,2*s,1e-15);
 
 	// result should lie between s and 2*s
 	xc = max2(xc,s);
