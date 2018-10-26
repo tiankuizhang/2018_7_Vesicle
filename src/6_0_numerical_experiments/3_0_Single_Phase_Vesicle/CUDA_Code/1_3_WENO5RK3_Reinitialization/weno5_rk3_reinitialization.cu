@@ -37,15 +37,69 @@ double sign(double x)
 }
 
 // a Polynomial template that will accept any number of coefficients
+// pn(x) = c0 + c1*x + c2*x^2 + ... cn*x^n
 template<int n> class Poly{
 private:
-	double coef[n];
+	double coef[n+1]; // c0,c1,...cn
 public:
-		__device__
-		Poly<n>(double const * c) {
-			for(int i=0; i<=n; i++) coef[i] = c[i];
+		__device__ inline
+		Poly<n>(void) {
+			for(int i=0; i<=n; i++) coef[i] = 0.0;
 		}
-		__device__
+		__device__ inline
+		int setCoefficient(double const * c){
+			for(int i=0; i<=n; i++) coef[i] = c[i];
+			return 0;
+		}
+		// set coef from Lagrange's interpolation polynomial
+		__device__ inline
+		int setInterpolation(double const * x, double const * y){
+			// n+1 points are needed to determine a nth orer poly
+			double kk[n+1];
+			double xx[n+1][n];
+			for(int i=0; i<=n; i++){
+				kk[i] = y[i];
+				int ind(0);
+				for(int j=0; j<=n; j++){
+					if(j!=i){
+						kk[i] *= 1.0/(x[i]-x[j]);
+						xx[i][ind] = x[j];
+						ind++;
+					}
+				}
+			}
+			// c[i][:] is the coefficients of the polynomial with zeros at xx[i][:]
+			double c[n+1][n+1];
+			for(int i=0; i<=n; i++){
+				c[i][0] = 1.0;
+				for(int j=1; j<=n; j++){
+					c[i][j] = 0.0;
+				}
+			}
+			for(int i=0; i<=n; i++){
+				// coefficient for c[i][:]
+				for(int j=0; j<n; j++){
+					// n iteration for n points
+					double tmp[n+1];
+					for(int k=1; k<=j+1; k++){
+						// expand recursion formula
+						tmp[k] = c[i][k] - xx[i][j]*c[i][k-1];
+					}
+					for(int k=1; k<=j+1; k++){
+						c[i][k] = tmp[k];
+					}
+				}
+			}
+			// now collect results in coef[:]
+			for(int i=0; i<=n; i++){
+				coef[i] = 0.0;
+				for(int j=0; j<=n; j++){
+					coef[i] += kk[j] * c[j][n-i];
+				}
+			}
+			return 0;
+		}
+		__device__ inline
 		double operator()(double x){
 			double val(0);
 			for(int i=0; i<=n; i++) val += coef[i]*pow(x,i);
@@ -54,8 +108,9 @@ public:
 };
 
 // a template function that will find root of T(x) between x1 and x2 with a tolerance toler
+// with Brent's methods
 template<typename T>
-__device__ double zeroin(T func, double x1, double x2, double toler)
+__device__ inline double zeroin(T func, double x1, double x2, double toler)
 {
 	int const ITMAX = 100; // Maximum allowed number of iterations
 
@@ -167,40 +222,10 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
 		return sp(v0,v1,v2,v3,s);
 	}// if near a kink, use cubic ENO interpolant
 
-	// calculate the interpolant coefficient
-	double c0 = v0;
-	double c1 = (     3.0 * (v1-v0) - 3.0/2.0 * (v2-v0) + 1.0/3.0 * (v3-v0) ) / s;
-	double c2 = (-5.0/2.0 * (v1-v0) +     2.0 * (v2-v0) - 1.0/2.0 * (v3-v0) ) / pow(s,2);
-	double c3 = ( 1.0/2.0 * (v1-v0) - 1.0/2.0 * (v2-v0) + 1.0/6.0 * (v3-v0) ) / pow(s,3);
-	/* It is EXTREMELY important to use float point numbers 1.0/2.0 instead of 1/2 
-	 * the latter will give (double)(int)(1/2) = 0.0 instead of 0.5
-	 */
-
-	//Poly3 p3(c0,c1,c2,c3);
-	double coef[4] = {c0,c1,c2,c3};
-	//Polynomial p3(3,coef);
-	Poly<3> p3(coef);
-
-	// now use Newton's method to find root
-//	double xc = s + s * v1 / (v1 - v2); // initial guess
-//
-//	int iter = 0;
-//	int const max_iter = 50;
-//	double const max_error = 1e-14;
-//	double diff = 1;
-//
-//	while( diff>max_error && iter<max_iter){
-//		// Newton's method
-//		//double f = c0 + c1 * xc + c2 * xc*xc + c3 * xc*xc*xc;
-//		double f = p3(xc);
-//		double d = c1 + 2 * c2 * xc + 3 * c3 * xc * xc;
-//		double new_xc = xc - f / d;
-//
-//		diff = fabs (f / d);
-//		iter++;
-//
-//		xc = new_xc;
-//	}
+	double xx[4] = {0.0,s,2*s,3*s};
+	double yy[4] = {v0,v1,v2,v3};
+	Poly<3> p3;
+	p3.setInterpolation(xx,yy);
 
 	double xc = zeroin<Poly<3> >(p3,s,2*s,1e-15);
 
