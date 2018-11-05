@@ -11,6 +11,7 @@ Size = [64,64,64];
 
 grid = SD.GD3(X,Y,Z);
 map = SD.SDF3(grid,X,Y,Z,f(X,Y,Z));
+%map.F = map.WENO5RK3Reinitialization(map.F,300);
 map.F = map.WENORK3Reinitialization(map.F,300);
 map.setCalculusToolBox4
 

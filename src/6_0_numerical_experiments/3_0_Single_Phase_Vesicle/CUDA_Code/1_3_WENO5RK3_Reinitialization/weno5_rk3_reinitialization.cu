@@ -42,69 +42,69 @@ template<int n> class Poly{
 private:
 	double coef[n+1]; // c0,c1,...cn
 public:
-		__device__ inline
-		Poly<n>(void) {
-			for(int i=0; i<=n; i++) coef[i] = 0.0;
-		}
-		__device__ inline
-		int setCoefficient(double const * c){
-			for(int i=0; i<=n; i++) coef[i] = c[i];
-			return 0;
-		}
-		// set coef from Lagrange's interpolation polynomial
-		__device__ inline
-		int setInterpolation(double const * x, double const * y){
-			// n+1 points are needed to determine a nth orer poly
-			double kk[n+1];
-			double xx[n+1][n];
-			for(int i=0; i<=n; i++){
-				kk[i] = y[i];
-				int ind(0);
-				for(int j=0; j<=n; j++){
-					if(j!=i){
-						kk[i] *= 1.0/(x[i]-x[j]);
-						xx[i][ind] = x[j];
-						ind++;
-					}
+	__device__ inline
+	Poly<n>(void) {
+		for(int i=0; i<=n; i++) coef[i] = 0.0;
+	}
+	__device__ inline
+	int setCoefficient(double const * c){
+		for(int i=0; i<=n; i++) coef[i] = c[i];
+		return 0;
+	}
+	// set coef from Lagrange's interpolation polynomial
+	__device__ inline
+	int setInterpolation(double const * x, double const * y){
+		// n+1 points are needed to determine a nth order poly
+		double kk[n+1]; // multiplying factor for each Lagrange interpolation term
+		double xx[n+1][n]; // corresponding zeros of each Lagrange interpolation term
+		for(int i=0; i<=n; i++){
+			kk[i] = y[i];
+			int ind(0);
+			for(int j=0; j<=n; j++){
+				if(j!=i){
+					kk[i] /= x[i]-x[j];
+					xx[i][ind] = x[j];
+					ind++;
 				}
 			}
-			// c[i][:] is the coefficients of the polynomial with zeros at xx[i][:]
-			double c[n+1][n+1];
-			for(int i=0; i<=n; i++){
-				c[i][0] = 1.0;
-				for(int j=1; j<=n; j++){
-					c[i][j] = 0.0;
-				}
-			}
-			for(int i=0; i<=n; i++){
-				// coefficient for c[i][:]
-				for(int j=0; j<n; j++){
-					// n iteration for n points
-					double tmp[n+1];
-					for(int k=1; k<=j+1; k++){
-						// expand recursion formula
-						tmp[k] = c[i][k] - xx[i][j]*c[i][k-1];
-					}
-					for(int k=1; k<=j+1; k++){
-						c[i][k] = tmp[k];
-					}
-				}
-			}
-			// now collect results in coef[:]
-			for(int i=0; i<=n; i++){
-				coef[i] = 0.0;
-				for(int j=0; j<=n; j++){
-					coef[i] += kk[j] * c[j][n-i];
-				}
-			}
-			return 0;
 		}
-		__device__ inline
-		double operator()(double x){
-			double val(0);
-			for(int i=0; i<=n; i++) val += coef[i]*pow(x,i);
-			return val;
+		// c[i][:] is the coefficients of the polynomial with zeros at xx[i][:]
+		double c[n+1][n+1];
+		for(int i=0; i<=n; i++){
+			c[i][0] = 1.0;
+			for(int j=1; j<=n; j++){
+				c[i][j] = 0.0;
+			}
 		}
+		for(int i=0; i<=n; i++){
+			// coefficient for c[i][:]
+			for(int j=0; j<n; j++){
+				// n iteration for n points
+				double tmp[n+1];
+				for(int k=1; k<=j+1; k++){
+					// expand recursion formula
+					tmp[k] = c[i][k] - xx[i][j]*c[i][k-1];
+				}
+				for(int k=1; k<=j+1; k++){
+					c[i][k] = tmp[k];
+				}
+			}
+		}
+		// now collect results in coef[:]
+		for(int i=0; i<=n; i++){
+			coef[i] = 0.0;
+			for(int j=0; j<=n; j++){
+				coef[i] += kk[j] * c[j][n-i];
+			}
+		}
+		return 0;
+	}
+	__device__ inline
+	double operator()(double x){
+		double val(0);
+		for(int i=0; i<=n; i++) val += coef[i]*pow(x,i);
+		return val;
+	}
 };
 
 // a template function that will find root of T(x) between x1 and x2 with a tolerance toler
@@ -222,11 +222,13 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
 		return sp(v0,v1,v2,v3,s);
 	}// if near a kink, use cubic ENO interpolant
 
+	// create a cubic interpolation
 	double xx[4] = {0.0,s,2*s,3*s};
 	double yy[4] = {v0,v1,v2,v3};
 	Poly<3> p3;
 	p3.setInterpolation(xx,yy);
 
+	// find zero of the polynomial
 	double xc = zeroin<Poly<3> >(p3,s,2*s,1e-15);
 
 	// result should lie between s and 2*s
@@ -234,6 +236,34 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
 	xc = min2(xc,2*s);
 
 	return (xc - s);
+}
+
+// calculate distance to boundary with a 6th order accurate approximation
+// i.e., with a 5th order polynomial
+// given 6 points (0,v0),(s,v1),(2s,v2),(3s,v3),(4s,v4),(5s,v5) and v2*v3<0
+__device__ inline
+double six_distance(double v0, double v1, double v2, double v3, double v4, double v5, double s)
+{
+	// IMPORTANT
+	bool kink = v1*v2 <0 || v3*v4 < 0;
+	if(kink){
+		return sp(v1,v2,v3,v4,s);
+	}// if near a kink, use cubic ENO interpolant
+
+	// create a cubic interpolation
+	double xx[6] = {0.0,s,2*s,3*s,4*s,5*s};
+	double yy[6] = {v0,v1,v2,v3,v4,v5};
+	Poly<5> p5;
+	p5.setInterpolation(xx,yy);
+
+	// find zero of the polynomial
+	double xc = zeroin<Poly<5> >(p5,2*s,3*s,3e-16);
+
+	// result should lie between 2*s and 3*s
+	xc = max2(xc,2*s);
+	xc = min2(xc,3*s);
+
+	return (xc - 2*s);
 }
 
 __device__ inline
@@ -342,6 +372,172 @@ void ENO_cubic_derivative(double & d_fore, double & d_back, double h3m, double h
 	d_fore = d1_0_5  + min_mod(d2_0, d2_1) * (x0 - x1)  + b;
 }
 
+__device__ inline
+void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, double h1m, double h0, double h1, double h2, double h3, double x3m, double x2m, double x1m, double x0, double x1, double x2, double x3)
+{
+	// first divided differences, i.e. cell averages
+	double d1_2_5   = (h3  - h2)  / (x3  - x2) ;
+	double d1_1_5   = (h2  - h1)  / (x2  - x1) ;
+	double d1_0_5   = (h1  - h0)  / (x1  - x0) ;
+	double d1_m0_5  = (h0  - h1m) / (x0  - x1m);
+	double d1_m1_5  = (h1m - h2m) / (x1m - x2m);
+	double d1_m2_5  = (h2m - h3m) / (x2m - x3m);
+
+	// boundary nodes and cell averages
+	double x_m2_5, x_m1_5, x_m0_5, x_0_5, x_1_5, x_2_5;
+	double u_m2, u_m1, u_0, u_1, u_2;
+	double v0, v1, v2, c0, c1, c2, s0, s1, s2;
+	double epsilon = 1e-6, alpha0, alpha1, alpha2, sum, omega0, omega1, omega2;
+
+	// calculate d_fore, choose a forward baised stencil
+	x_m2_5 = x2m; x_m1_5 = x1m; x_m0_5 = x0; x_0_5 = x1; x_1_5 = x2; x_2_5 = x3;
+	u_m2 = d1_m1_5; u_m1 = d1_m0_5; u_0 = d1_0_5; u_1 = d1_1_5; u_2 = d1_2_5;
+
+	// now we calculate u_m0_5 from cell averages for different stencils
+	v0 = u_1 
+		+ (u_0 - u_1) * (1.0 + (x_0_5 - x_m0_5)/(x_1_5 - x_m0_5) + (x_0_5 - x_m0_5)/(x_2_5 - x_m0_5))
+		+ (u_2 - u_1) * ((x_0_5 - x_m0_5)/(x_2_5 - x_m0_5)) * ((x_1_5 - x_m0_5)/(x_2_5 - x_0_5)) ;
+	v1 = u_0 
+		+ (u_m1 - u_0) * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_1_5 - x_m0_5)/(x_0_5 - x_m1_5))
+		- (u_1  - u_0) * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_m0_5 - x_m1_5)/(x_1_5 - x_m0_5)) ;
+	v2 = u_m1 
+		+ (u_0  - u_m1) * ((x_m0_5 - x_m1_5)/(x_0_5 - x_m2_5)) * ((x_m0_5 - x_m2_5)/(x_0_5 - x_m1_5))
+		- (u_m2 - u_m1) * ((x_m0_5 - x_m1_5)/(x_0_5 - x_m2_5)) * ((x_0_5 - x_m0_5)/(x_m0_5 - x_m2_5)) ;
+	// optimal weights in smooth region
+	c0 = ((x_m0_5 - x_m1_5)/(x_2_5 - x_m2_5)) * ((x_m0_5 - x_m2_5)/(x_2_5 - x_m1_5)) ;
+	c1 = ((x_m0_5 - x_m2_5)/(x_2_5 - x_m2_5)) * ((x_2_5 - x_m0_5)/(x_2_5 - x_m1_5))
+		* (1.0 + (x_2_5 - x_m1_5)/(x_1_5 - x_m2_5)) ;
+	c2 = ((x_1_5 - x_m0_5)/(x_2_5 - x_m2_5)) * ((x_2_5 - x_m0_5)/(x_1_5 - x_m2_5)) ;
+	// smoothness indicator
+	{
+	s0 = 4.0 * pow( (x_0_5 - x_m0_5)/(x_2_5 - x_m0_5), 2) * 
+		(
+			pow( (u_2 - u_1)/(x_2_5 - x_0_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5,2) + (x_1_5-x_m0_5) * (x_1_5 - x_0_5) 
+				)
+			+ (u_2 - u_1) * (u_0 - u_1) / ((x_2_5 - x_0_5)*(x_1_5 - x_m0_5)) *
+				( 20.0 * pow(x_0_5 - x_m0_5,2) + 2.0 * (x_1_5 - x_m0_5) * (x_1_5 - x_0_5) 
+				  + (x_2_5 - x_m0_5) * (2.0 * x_1_5 - x_0_5 - x_m0_5) 
+				)
+			+ pow( (u_0 - u_1)/(x_1_5 - x_m0_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5,2) 
+				  + (x_2_5 + x_1_5 - 2.0 * x_m0_5) * (x_2_5 + x_1_5 - x_0_5 - x_m0_5) 
+				)
+		);
+	s1 = 4.0 * pow( (x_0_5 - x_m0_5)/(x_1_5 - x_m1_5), 2) * 
+		(
+			pow( (u_m1 - u_0)/(x_0_5 - x_m1_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5,2) + (x_1_5 - x_m0_5)/(x_1_5 - x_0_5) 
+				)
+			+ (u_1 - u_0) * (u_m1 - u_0) / ((x_1_5 - x_m0_5)*(x_0_5 - x_m1_5)) *
+				( 20.0 * pow(x_0_5 - x_m0_5,2) - (x_1_5 - x_0_5)*(x_m0_5 - x_m1_5) 
+				  - (x_1_5 - x_m0_5)*(x_0_5 - x_m1_5) 
+				)
+			+ pow( (u_1 -u_0)/(x_1_5 - x_m0_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5, 2) + (x_m0_5 - x_m1_5)*(x_0_5 - x_m1_5)
+				)
+		);
+	s2 = 4.0 *pow( (x_0_5 - x_m0_5)/(x_0_5 - x_m2_5), 2) * 
+		(
+			pow( (u_m2 - u_m1)/(x_m0_5 - x_m2_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5, 2) + (x_0_5 - x_m1_5)*(x_m0_5 - x_m1_5)
+				)
+			+ (u_0 - u_m1)*(u_m2 - u_m1) / ((x_0_5 - x_m1_5)*(x_m0_5 - x_m2_5)) *
+				( 20.0 * pow(x_0_5-x_m0_5, 2)+ 2.0 * (x_0_5 - x_1_5)*(x_0_5 - x_m1_5)
+				  + (x_0_5 - x_m2_5)*(x_0_5 + x_m0_5 - 2.0 * x_m1_5)
+				)
+			+ pow( (u_0 - u_m1)/(x_0_5 - x_m1_5), 2) *
+				( 10.0 * pow(x_0_5 - x_m0_5, 2) 
+				  + (2.0 * x_0_5 - x_m2_5 - x_m1_5)*(x_0_5 + x_m0_5 - x_m1_5 - x_m2_5)
+				)
+		);
+	}
+	// optimal weights
+	alpha0 = c0 / pow( (s0 + epsilon), 2);
+	alpha1 = c1 / pow( (s1 + epsilon), 2);
+	alpha2 = c2 / pow( (s2 + epsilon), 2);
+	sum = alpha0 + alpha1 + alpha2;
+	omega0 = alpha0 / sum;
+	omega1 = alpha1 / sum;
+	omega2 = alpha2 / sum;
+
+	d_fore = v0 * omega0 + v1 * omega1 + v2 * omega2;
+
+	// calculate d_back, choose a backward baised stencil
+	x_m2_5 = x3m; x_m1_5 = x2m; x_m0_5 = x1m; x_0_5 = x0; x_1_5 = x1; x_2_5 = x2;
+	u_m2 = d1_m2_5; u_m1 = d1_m1_5; u_0 = d1_m0_5; u_1 = d1_0_5; u_2 = d1_1_5; 
+
+	// now we calculate u_0_5 from cell averages for different stencils
+	v0 = u_1 
+		+ (u_0 - u_1) * ((x_1_5 - x_0_5)/(x_2_5 - x_m0_5)) * ((x_2_5 - x_0_5)/(x_1_5 - x_m0_5))
+		- (u_2 - u_1) * ((x_1_5 - x_0_5)/(x_2_5 - x_m0_5)) * ((x_0_5 - x_m0_5)/(x_2_5 - x_0_5)) ;
+	v1 = u_0
+		+ (u_1 - u_0) * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_0_5 - x_m1_5)/(x_1_5 - x_m0_5))
+		+ (u_m1 - u_0) * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_1_5 - x_0_5)/(x_0_5 - x_m1_5)) ;
+	v2 = u_m1
+		+ (u_m2 - u_m1) * ((x_0_5 - x_m0_5)/(x_m0_5 - x_m2_5)) * ((x_0_5 - x_m1_5)/(x_0_5 - x_m2_5))
+		+ (u_0 - u_m1) * (1.0 + (x_0_5 - x_m0_5)/(x_0_5 - x_m1_5) + (x_0_5 - x_m0_5)/(x_0_5 - x_m2_5)) ;
+	// optimal weights in smooth region
+	c0 = ((x_0_5 - x_m2_5)/(x_2_5 - x_m2_5)) * ((x_0_5 - x_m1_5)/(x_2_5 -x_m1_5)) ;
+	c1 = ((x_0_5 - x_m2_5)/(x_2_5 - x_m2_5)) * ((x_2_5 - x_0_5)/(x_2_5 - x_m1_5))
+		* (1.0 + (x_2_5 - x_m1_5)/(x_1_5 - x_m2_5)) ;
+	c2 = ((x_1_5 - x_0_5)/(x_2_5 - x_m2_5)) * ((x_2_5 - x_0_5)/(x_1_5 - x_m2_5)) ;
+	// smoothness indicator
+	{
+	s0 = 4.0 * pow( (x_0_5 - x_m0_5)/(x_2_5 - x_m0_5), 2) * 
+		(
+			pow( (u_2 - u_1)/(x_2_5 - x_0_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5,2) + (x_1_5-x_m0_5) * (x_1_5 - x_0_5) 
+				)
+			+ (u_2 - u_1) * (u_0 - u_1) / ((x_2_5 - x_0_5)*(x_1_5 - x_m0_5)) *
+				( 20.0 * pow(x_0_5 - x_m0_5,2) + 2.0 * (x_1_5 - x_m0_5) * (x_1_5 - x_0_5) 
+				  + (x_2_5 - x_m0_5) * (2.0 * x_1_5 - x_0_5 - x_m0_5) 
+				)
+			+ pow( (u_0 - u_1)/(x_1_5 - x_m0_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5,2) 
+				  + (x_2_5 + x_1_5 - 2.0 * x_m0_5) * (x_2_5 + x_1_5 - x_0_5 - x_m0_5) 
+				)
+		);
+	s1 = 4.0 * pow( (x_0_5 - x_m0_5)/(x_1_5 - x_m1_5), 2) * 
+		(
+			pow( (u_m1 - u_0)/(x_0_5 - x_m1_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5,2) + (x_1_5 - x_m0_5)/(x_1_5 - x_0_5) 
+				)
+			+ (u_1 - u_0) * (u_m1 - u_0) / ((x_1_5 - x_m0_5)*(x_0_5 - x_m1_5)) *
+				( 20.0 * pow(x_0_5 - x_m0_5,2) - (x_1_5 - x_0_5)*(x_m0_5 - x_m1_5) 
+				  - (x_1_5 - x_m0_5)*(x_0_5 - x_m1_5) 
+				)
+			+ pow( (u_1 -u_0)/(x_1_5 - x_m0_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5, 2) + (x_m0_5 - x_m1_5)*(x_0_5 - x_m1_5)
+				)
+		);
+	s2 = 4.0 *pow( (x_0_5 - x_m0_5)/(x_0_5 - x_m2_5), 2) * 
+		(
+			pow( (u_m2 - u_m1)/(x_m0_5 - x_m2_5), 2) * 
+				( 10.0 * pow(x_0_5 - x_m0_5, 2) + (x_0_5 - x_m1_5)*(x_m0_5 - x_m1_5)
+				)
+			+ (u_0 - u_m1)*(u_m2 - u_m1) / ((x_0_5 - x_m1_5)*(x_m0_5 - x_m2_5)) *
+				( 20.0 * pow(x_0_5-x_m0_5, 2)+ 2.0 * (x_0_5 - x_1_5)*(x_0_5 - x_m1_5)
+				  + (x_0_5 - x_m2_5)*(x_0_5 + x_m0_5 - 2.0 * x_m1_5)
+				)
+			+ pow( (u_0 - u_m1)/(x_0_5 - x_m1_5), 2) *
+				( 10.0 * pow(x_0_5 - x_m0_5, 2) 
+				  + (2.0 * x_0_5 - x_m2_5 - x_m1_5)*(x_0_5 + x_m0_5 - x_m1_5 - x_m2_5)
+				)
+		);
+	}
+	// optimal weights
+	alpha0 = c0 / pow( (s0 + epsilon), 2);
+	alpha1 = c1 / pow( (s1 + epsilon), 2);
+	alpha2 = c2 / pow( (s2 + epsilon), 2);
+	sum = alpha0 + alpha1 + alpha2;
+	omega0 = alpha0 / sum;
+	omega1 = alpha1 / sum;
+	omega2 = alpha2 / sum;
+
+	d_back = v0 * omega0 + v1 * omega1 + v2 * omega2;
+}
+
 // calculate weno derivative at p4: p1<-l3-p2<-l2-p3<-l1-p4-r1->p5-r2->p6-r3->p7
 // where px are level set function values at node x
 // lx, rx are distance to the left/right node 
@@ -364,13 +560,14 @@ void weno_derivative_boundary(double & d_fore, double & d_back, double p1, doubl
 		double h3m,h2m,h1m,h0,h1,h2,h3;
 		double x3m,x2m,x1m,x0,x1,x2,x3;
 		select_stencil(h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,ds);
-		ENO_cubic_derivative(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3);
+		//ENO_cubic_derivative(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3);
+		weno_nonuniform(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3);
 	}// for nodes IMMEDIATELY adjacent to the boundary, use cubic ENO interpolant
 }
 
-// make corrections to xpr etc
+// make corrections to xpr etc with cubic interpolation
 __global__
-void boundary_correction(double * xpr, double * xpl, double * ypf, double * ypb, double * zpu, double * zpd, double const * lsf, int num_ele, int rows, int cols, int pges, double dx, double dy, double dz)
+void boundary_correction_backup(double * xpr, double * xpl, double * ypf, double * ypb, double * zpu, double * zpd, double const * lsf, int num_ele, int rows, int cols, int pges, double dx, double dy, double dz)
 {
 	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
@@ -412,6 +609,58 @@ void boundary_correction(double * xpr, double * xpl, double * ypf, double * ypb,
 	}
 
 }
+
+// make corrections to xpr etc with 5th order interpolation
+__global__
+void boundary_correction(double * xpr, double * xpl, double * ypf, double * ypb, double * zpu, double * zpd, double const * lsf, int num_ele, int rows, int cols, int pges, double dx, double dy, double dz)
+{
+	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
+	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
+
+	if(row_idx >= rows || col_idx >= cols || pge_idx >= pges){
+		return;
+	}
+
+	double f2;
+	int ind = sub2ind(row_idx, col_idx, pge_idx, rows, cols, pges);
+	double f0 = lsf[ind];
+
+	int right = sub2ind(row_idx, col_idx+1, pge_idx, rows, cols, pges);
+	f2 = lsf[right];
+	if(f0*f2<0){
+		int left = sub2ind(row_idx, col_idx-1, pge_idx, rows, cols, pges);
+		int left2 = sub2ind(row_idx, col_idx-2, pge_idx, rows, cols, pges);
+		int right2 = sub2ind(row_idx, col_idx+2, pge_idx, rows, cols, pges);
+		int right3 = sub2ind(row_idx, col_idx+3, pge_idx, rows, cols, pges);
+		xpr[ind] = six_distance(lsf[left2], lsf[left], f0, f2, lsf[right2], lsf[right3], dx);
+		xpl[right] = dx - xpr[ind];
+	}
+
+	int front = sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);
+	f2 = lsf[front];
+	if(f0*f2<0){
+		int back = sub2ind(row_idx-1, col_idx, pge_idx, rows, cols, pges);
+		int back2 = sub2ind(row_idx-2, col_idx, pge_idx, rows, cols, pges);
+		int front2 = sub2ind(row_idx+2, col_idx, pge_idx, rows, cols, pges);
+		int front3 = sub2ind(row_idx+3, col_idx, pge_idx, rows, cols, pges);
+		ypf[ind] = six_distance(lsf[back2], lsf[back], f0, f2, lsf[front2], lsf[front3], dy);
+		ypb[front] = dy - ypf[ind];
+	}
+
+	int up = sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);
+	f2 = lsf[up];
+	if(f0*f2<0){
+		int down = sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
+		int down2 = sub2ind(row_idx, col_idx, pge_idx-2, rows, cols, pges);
+		int up2 = sub2ind(row_idx, col_idx, pge_idx+2, rows, cols, pges);
+		int up3 = sub2ind(row_idx, col_idx, pge_idx+3, rows, cols, pges);
+		zpu[ind] = six_distance(lsf[down2], lsf[down], f0, f2, lsf[up2], lsf[up3], dz);
+		zpd[up] = dz - zpu[ind];
+	}
+
+}
+
 
 __global__
 void re_step(double * step, double const * lsf, bool const * mask, double const * deltat, double const * xpr, double const * xpl, double const * ypf, double const * ypb, double const * zpu, double const * zpd, int rows, int cols, int pges, double dx, double dy, double dz, int num_ele)
