@@ -513,7 +513,7 @@ void ENO_cubic_derivative(double & d_fore, double & d_back, double h3m, double h
 __device__ inline
 void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, double h1m, double h0, double h1, double h2, double h3, double x3m, double x2m, double x1m, double x0, double x1, double x2, double x3)
 {
-	// first divided differences, i.e. cell averages
+	// first divided differences, i.e. cell averages of derivatives
 	double d1_2_5   = (h3  - h2)  / (x3  - x2) ;
 	double d1_1_5   = (h2  - h1)  / (x2  - x1) ;
 	double d1_0_5   = (h1  - h0)  / (x1  - x0) ;
@@ -581,7 +581,7 @@ void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, d
 				( 10.0 * pow(x_0_5 - x_m0_5, 2) + (x_0_5 - x_m1_5)*(x_m0_5 - x_m1_5)
 				)
 			+ (u_0 - u_m1)*(u_m2 - u_m1) / ((x_0_5 - x_m1_5)*(x_m0_5 - x_m2_5)) *
-				( 20.0 * pow(x_0_5-x_m0_5, 2)+ 2.0 * (x_0_5 - x_1_5)*(x_m0_5 - x_m1_5) 
+				( 20.0 * pow(x_0_5 - x_m0_5, 2)+ 2.0 * (x_0_5 - x_m1_5)*(x_m0_5 - x_m1_5) 
 				  + (x_0_5 - x_m2_5)*(x_0_5 + x_m0_5 - 2.0 * x_m1_5)
 				)
 			+ pow( (u_0 - u_m1)/(x_0_5 - x_m1_5), 2) *
@@ -610,7 +610,7 @@ void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, d
 		+ (u_0 - u_1) * ((x_1_5 - x_0_5)/(x_2_5 - x_m0_5)) * ((x_2_5 - x_0_5)/(x_1_5 - x_m0_5))
 		- (u_2 - u_1) * ((x_1_5 - x_0_5)/(x_2_5 - x_m0_5)) * ((x_0_5 - x_m0_5)/(x_2_5 - x_0_5)) ;
 	v1 = u_0
-		+ (u_1 - u_0) * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_0_5 - x_m1_5)/(x_1_5 - x_m0_5))
+		+ (u_1 - u_0)  * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_0_5 - x_m1_5)/(x_1_5 - x_m0_5))
 		- (u_m1 - u_0) * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_1_5 - x_0_5)/(x_0_5 - x_m1_5)) ;
 	v2 = u_m1
 		+ (u_m2 - u_m1) * ((x_0_5 - x_m0_5)/(x_m0_5 - x_m2_5)) * ((x_0_5 - x_m1_5)/(x_0_5 - x_m2_5))
@@ -655,7 +655,7 @@ void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, d
 				( 10.0 * pow(x_0_5 - x_m0_5, 2) + (x_0_5 - x_m1_5)*(x_m0_5 - x_m1_5)
 				)
 			+ (u_0 - u_m1)*(u_m2 - u_m1) / ((x_0_5 - x_m1_5)*(x_m0_5 - x_m2_5)) *
-				( 20.0 * pow(x_0_5-x_m0_5, 2)+ 2.0 * (x_0_5 - x_1_5)*(x_m0_5 - x_m1_5) 
+				( 20.0 * pow(x_0_5 - x_m0_5, 2)+ 2.0 * (x_0_5 - x_m1_5)*(x_m0_5 - x_m1_5) 
 				  + (x_0_5 - x_m2_5)*(x_0_5 + x_m0_5 - 2.0 * x_m1_5)
 				)
 			+ pow( (u_0 - u_m1)/(x_0_5 - x_m1_5), 2) *

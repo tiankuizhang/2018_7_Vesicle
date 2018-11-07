@@ -29,10 +29,9 @@ E64 = sqrt(map.surfaceIntegral(Diff.^2));
 E64_2 = sqrt(map.surfaceIntegral(SLMC.^2));
 
 DF = map.F - (sqrt(x.^2+y.^2+z.^2) - r);
-%EF64 = sqrt(map.surfaceIntegral(DF.^2));
 DF = map.WENORK3Extend(DF,100);
 mask = abs(map.F) < 2*map.GD3.Ds;
-EF64 = max(abs(DF(mask)));
+EF64 = sqrt(map.surfaceIntegral(DF.^2));
 
 fprintf('64: MC Err: %5.3e, SLMC Err: %5.3e, F Err: %5.3e \n',E64,E64_2,EF64)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -65,8 +64,7 @@ E96_2 = sqrt(map.surfaceIntegral(SLMC.^2));
 DF = map.F - (sqrt(x.^2+y.^2+z.^2) - r);
 DF = map.WENORK3Extend(DF,100);
 mask = abs(map.F) < 2*map.GD3.Ds;
-%EF96 = sqrt(map.surfaceIntegral(DF.^2));
-EF96 = max(abs(DF(mask)));
+EF96 = sqrt(map.surfaceIntegral(DF.^2));
 
 fprintf('96: MC Err: %5.3e, SLMC Err: %5.3e, F Err: %5.3e \n',E96,E96_2,EF96)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -99,8 +97,7 @@ E128_2 = sqrt(map.surfaceIntegral(SLMC.^2));
 DF = map.F - (sqrt(x.^2+y.^2+z.^2) - r);
 DF = map.WENORK3Extend(DF,100);
 mask = abs(map.F) < 2*map.GD3.Ds;
-%EF128 = sqrt(map.surfaceIntegral(DF.^2))
-EF128 = max(abs(DF(mask)));
+EF128 = sqrt(map.surfaceIntegral(DF.^2));
 
 fprintf('128: MC Err: %5.3e, SLMC Err: %5.3e, F Err: %5.3e \n',E128,E128_2,EF128)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -133,8 +130,7 @@ E192_2 = sqrt(map.surfaceIntegral(SLMC.^2));
 DF = map.F - (sqrt(x.^2+y.^2+z.^2) - r);
 DF = map.WENORK3Extend(DF,100);
 mask = abs(map.F) < 2*map.GD3.Ds;
-%EF128 = sqrt(map.surfaceIntegral(DF.^2))
-EF192 = max(abs(DF(mask)));
+EF192 = sqrt(map.surfaceIntegral(DF.^2));
 
 fprintf('192: MC Err: %5.3e, SLMC Err: %5.3e, F Err: %5.3e \n',E192,E192_2,EF192)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

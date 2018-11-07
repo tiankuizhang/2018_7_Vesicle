@@ -33,4 +33,4 @@ diffSL_MC = map.WENORK3Extend(SL_MC - MeanCurvatureSurfaceLaplacian,100);
 
 MCL2Error = sqrt(map.surfaceIntegral(diffMC.^2))
 SLMCL2Error = sqrt(map.surfaceIntegral(diffSL_MC.^2))
-
+%
