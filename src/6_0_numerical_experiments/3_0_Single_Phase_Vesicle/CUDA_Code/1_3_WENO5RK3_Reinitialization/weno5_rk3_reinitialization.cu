@@ -684,6 +684,9 @@ void weno_derivative_boundary(double & d_fore, double & d_back, double p1, doubl
 {
 	bool cross_interface = p3*p4<0 || p4*p5<0;
 	//bool cross_interface = p3*p4<0 || p4*p5<0 || p2*p3<0 || p5*p6<0;
+	// both definition works. so we should choose the first one
+
+	//bool cross_interface = false; // without boundary fix. no convergence
 
 	if(cross_interface){
 		double h3m,h2m,h1m,h0,h1,h2,h3;
