@@ -6,6 +6,9 @@
  * central weno 6th order accurate scheme will be applied at nodes not immediately
  * next to the boundary
  ******************************************************************************/
+
+namespace su // shared utilities
+{
 __device__ inline
 double max2(double x, double y)
 {
@@ -36,9 +39,28 @@ double sign(double x)
 	return (x>0) ? 1.0 : -1.0;
 }
 
+// convert subindex to linear index
+// periodic boundary conditions are assumed
+__device__ inline
+int sub2ind(int row_idx, int col_idx, int pge_idx, int rows, int cols, int pges)
+{
+	int row_idxn = min2(rows-1, max2(0, row_idx));
+	int col_idxn = min2(cols-1, max2(0, col_idx));
+	int pge_idxn = min2(pges-1, max2(0, pge_idx));
+
+	int ind = pge_idxn * rows * cols + col_idxn * rows + row_idxn;
+
+	return ind;
+}
+}
+
+namespace bd // boundary distance
+{
+	using namespace su;
 // a Polynomial template that will accept any number of coefficients
 // pn(x) = c0 + c1*x + c2*x^2 + ... cn*x^n
-template<int n> class Poly{
+template<int n> class Poly
+{
 private:
 	double coef[n+1]; // c0,c1,...cn
 public:
@@ -175,21 +197,6 @@ __device__ inline double zeroin(T func, double x1, double x2, double toler)
 	return b;
 };
 
-// convert subindex to linear index
-// periodic boundary conditions are assumed
-__device__ inline
-int sub2ind(int row_idx, int col_idx, int pge_idx, int rows, int cols, int pges)
-{
-	int row_idxn = min2(rows-1, max2(0, row_idx));
-	int col_idxn = min2(cols-1, max2(0, col_idx));
-	int pge_idxn = min2(pges-1, max2(0, pge_idx));
-
-	int ind = pge_idxn * rows * cols + col_idxn * rows + row_idxn;
-
-	return ind;
-}
-
-
 /****************************************************************************** 
  * calculate distance to the bundary with qudratic eno 
  * if v0*f2<0, return distance from v0 to boundary
@@ -229,7 +236,7 @@ double cubic_distance(double v0, double v1, double v2, double v3, double s)
 	p3.setInterpolation(xx,yy);
 
 	// find zero of the polynomial
-	double xc = zeroin<Poly<3> >(p3,s,2*s,1e-15);
+	double xc = zeroin<Poly<3> >(p3,s,2*s,3e-16);
 
 	// result should lie between s and 2*s
 	xc = max2(xc,s);
@@ -245,10 +252,14 @@ __device__ inline
 double six_distance(double v0, double v1, double v2, double v3, double v4, double v5, double s)
 {
 	// IMPORTANT
-	bool kink = v1*v2 <0 || v3*v4 < 0;
-	if(kink){
-		return sp(v1,v2,v3,v4,s);
-	}// if near a kink, use cubic ENO interpolant
+	// if near a kink, use cubic ENO interpolant
+	bool kink1 = v1*v2 < 0 || v3*v4 < 0;
+	if(kink1) return sp(v1,v2,v3,v4,s);
+
+	// if one grid away from a kink use cubic interpolation
+	//bool kink2 = v0*v1 < 0 || v4*v5 < 0;
+	//if(kink2 && false) return cubic_distance(v1,v2,v3,v3,s);
+	// should not be used due to unexpected degradation of accuracy
 
 	// create a cubic interpolation
 	double xx[6] = {0.0,s,2*s,3*s,4*s,5*s};
@@ -265,7 +276,11 @@ double six_distance(double v0, double v1, double v2, double v3, double v4, doubl
 
 	return (xc - 2*s);
 }
+}
 
+namespace rs // reinitialization step
+{
+	using namespace su;
 __device__ inline
 double weno_onesided_derivative(double v1, double v2, double v3, double v4, double v5)
 {
@@ -294,10 +309,55 @@ double weno_onesided_derivative(double v1, double v2, double v3, double v4, doub
 
 }
 
+__device__ inline
+double weno6_onesided_derivative(double vm2, double vm1, double v0, double v1, double v2, double v3)
+{
+	// different choices of ENO derivatives
+	double phi0 = (2.0  * vm2 - 7.0 * vm1 + 11.0 * v0) / 6.0;
+	double phi1 = (      -vm1 + 5.0 * v0  + 2.0  * v1) / 6.0;
+	double phi2 = (2.0  * v0  + 5.0 * v1  -        v2) / 6.0;
+	double phi3 = (11.0 * v1  - 7.0 * v2  + 2.0  * v3) / 6.0;
+
+	// smoothness indicator
+	double S0 = 1./4. * pow(vm2 - 4.*vm1 + 3.*v0, 2) + 13./12. * pow(vm2 - 2.*vm1 + v0, 2);
+	double S1 = 1./4. * pow(vm1 - v1, 2)             + 13./12. * pow(vm1 - 2.*v0  + v1, 2);
+	double S2 = 1./4. * pow(3.*v0 - 4*v1 + v2, 2)    + 13./12. * pow(v0  - 2.*v1  + v2, 2);
+	double S6 = 
+		(
+			271779. * vm2 * vm2
+			+ vm2 * ( 2380800.  * vm1 + 4086352.  * v0 - 3462252.  * v1 + 1458762. * v2 - 245620.  * v3)
+			+ vm1 * ( 5653317.  * vm1 - 20427884. * v0 + 17905032. * v1 - 7727988. * v2 + 1325006. * v3)
+			+ v0  * ( 19510972. * v0  - 35817664. * v1 + 15929912. * v2 - 2792660. * v3)
+			+ v1  * ( 17195652. * v1  - 15880404. * v2 + 2863984.  * v3)
+			+ v2  * ( 3824847.  * v2  - 1429976.  * v3)
+			+ 139633. * v3 * v3
+		) / 10080.;
+	double S3 = S6;
+	double tau6 = S6 - (S0 + S2 + 4.0 * S1) / 6.0;
+
+	double epsilon = 1e-40;
+	//double epsilon = 1e-6;
+	double C = 20.0;
+	double d0 = 1./20., d1 = 9./20., d2 = 9./20., d3 = 1./20.;
+
+	double alpha0 = d0 * (C + tau6 / (S0 + epsilon) );
+	double alpha1 = d1 * (C + tau6 / (S1 + epsilon) );
+	double alpha2 = d2 * (C + tau6 / (S2 + epsilon) );
+	double alpha3 = d3 * (C + tau6 / (S3 + epsilon) );
+
+	double sum = alpha0 + alpha1 + alpha2 + alpha3;
+	double omega0 = alpha0 / sum;
+	double omega1 = alpha1 / sum;
+	double omega2 = alpha2 / sum;
+	double omega3 = alpha3 / sum;
+
+	return (omega0 * phi0 + omega1 * phi1 + omega2 * phi2 + omega3 * phi3);
+}
+
 // given a stencil across the boundary: p1<-l3-p2<-l2-p3<-l1-p4-r1->p5-r2->p6-r3->p7
 // create a new stencil (x3m,h3m),(x2m,h2m),(x1m,h1m),(x0,h0),(x1,h1),(x2,h2),(x3,h3) including boundary nodes
 __device__ inline
-void select_stencil(double & h3m, double & h2m, double & h1m, double & h0, double & h1, double & h2, double & h3, double & x3m, double & x2m, double & x1m, double & x0, double & x1, double & x2, double & x3, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
+void select_stencil_1(double & h3m, double & h2m, double & h1m, double & h0, double & h1, double & h2, double & h3, double & x3m, double & x2m, double & x1m, double & x0, double & x1, double & x2, double & x3, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
 {
 		h0 = p4; x0 = 0.0;
 
@@ -332,6 +392,84 @@ void select_stencil(double & h3m, double & h2m, double & h1m, double & h0, doubl
 			h2m = p2;
 			h3m = p1;
 		}
+}
+
+__device__ inline
+void select_stencil_2(double & h3m, double & h2m, double & h1m, double & h0, double & h1, double & h2, double & h3, double & x3m, double & x2m, double & x1m, double & x0, double & x1, double & x2, double & x3, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
+{
+		h0 = p4; x0 = 0.0;
+
+		if(r2<ds){
+			x1 = ds;
+			x2 = ds + r2;
+			x3 = 2*ds;
+			h1 = p5;
+			h2 = 0.0;
+			h3 = p6;
+		}else{
+			x1 = ds;
+			x2 = 2*ds;
+			x3 = 3*ds;
+			h1 = p5;
+			h2 = p6;
+			h3 = p7;
+		}
+
+		if(l1<ds){
+			x1m = - ds;
+			x2m = - ds - l1;
+			x3m = - 2*ds;
+			h1m = p3;
+			h2m = 0.0;
+			h3m = p2;
+		}else{
+			x1m = -ds;
+			x2m = - 2*ds;
+			x3m = - 3*ds;
+			h1m = p3;
+			h2m = p2;
+			h3m = p1;
+		}
+}
+
+__device__ inline
+void select_stencil_0(double & h3m, double & h2m, double & h1m, double & h0, double & h1, double & h2, double & h3, double & x3m, double & x2m, double & x1m, double & x0, double & x1, double & x2, double & x3, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
+{
+		h0 = p4; x0 = 0.0;
+		double r[3], p[3], x[7], h[7];
+		int i, j;
+		x[0] = x0; h[0] = h0;
+		// set (x1,h1),(x2,h2),(x3,h3) from r1,r2,r3 and p5, p6, p7
+		r[0] = r1; r[1] = r2; r[2] = r3; p[0] = p5; p[1] = p6; p[2] = p3;
+		i = 0, j = 1;
+		while(i < 3){
+			if(r[i] < ds){
+				x[j] = x[j-1] + r[i]; x[j+1] = x[j-1] + ds; 
+				h[j] = 0.0; h[j+1] = p[i];
+				j += 2; i++;
+			}else{
+				x[j] = x[j-1] + ds; h[j] = p[i]; j++; i++;
+			}
+		}
+		x1 = x[1]; x2 = x[2]; x3 = x[3];
+		h1 = h[1]; h2 = h[2]; h3 = h[3];
+		// set (x1m,h1m),(x2m,h2m),(x3m,h3m) from l1,l2,l3 and p3,p2,p1
+		r[0] = l1; r[1] = l2; r[2] = l3; p[0] = p3; p[1] = p2; p[2] = p1;
+		i = 0; j = 1;
+		while(i < 3){
+			if(r[i] < ds){
+				x[j] = x[j-1] - r[i]; x[j+1] = x[j-1] - ds;
+				h[j] = 0.0; h[j+1] = p[i];
+				j += 2; i++;
+			}else{
+				x[j] = x[j-1] - ds; h[j] = p[i]; j++; i++;
+			}
+		}
+		x1m = x[1]; x2m = x[2]; x3m = x[3];
+		h1m = h[1]; h2m = h[2]; h3m = h[3];
+
+
+
 }
 
 // for stencil (x3m,h3m),(x2m,h2m),(x1m,h1m),(x0,h0),(x1,h1),(x2,h2),(x3,h3) including boundary nodes
@@ -427,7 +565,7 @@ void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, d
 	s1 = 4.0 * pow( (x_0_5 - x_m0_5)/(x_1_5 - x_m1_5), 2) * 
 		(
 			pow( (u_m1 - u_0)/(x_0_5 - x_m1_5), 2) * 
-				( 10.0 * pow(x_0_5 - x_m0_5,2) + (x_1_5 - x_m0_5)/(x_1_5 - x_0_5) 
+				( 10.0 * pow(x_0_5 - x_m0_5,2) + (x_1_5 - x_m0_5) * (x_1_5 - x_0_5) 
 				)
 			+ (u_1 - u_0) * (u_m1 - u_0) / ((x_1_5 - x_m0_5)*(x_0_5 - x_m1_5)) *
 				( 20.0 * pow(x_0_5 - x_m0_5,2) - (x_1_5 - x_0_5)*(x_m0_5 - x_m1_5) 
@@ -443,7 +581,7 @@ void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, d
 				( 10.0 * pow(x_0_5 - x_m0_5, 2) + (x_0_5 - x_m1_5)*(x_m0_5 - x_m1_5)
 				)
 			+ (u_0 - u_m1)*(u_m2 - u_m1) / ((x_0_5 - x_m1_5)*(x_m0_5 - x_m2_5)) *
-				( 20.0 * pow(x_0_5-x_m0_5, 2)+ 2.0 * (x_0_5 - x_1_5)*(x_0_5 - x_m1_5)
+				( 20.0 * pow(x_0_5-x_m0_5, 2)+ 2.0 * (x_0_5 - x_1_5)*(x_m0_5 - x_m1_5) 
 				  + (x_0_5 - x_m2_5)*(x_0_5 + x_m0_5 - 2.0 * x_m1_5)
 				)
 			+ pow( (u_0 - u_m1)/(x_0_5 - x_m1_5), 2) *
@@ -473,7 +611,7 @@ void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, d
 		- (u_2 - u_1) * ((x_1_5 - x_0_5)/(x_2_5 - x_m0_5)) * ((x_0_5 - x_m0_5)/(x_2_5 - x_0_5)) ;
 	v1 = u_0
 		+ (u_1 - u_0) * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_0_5 - x_m1_5)/(x_1_5 - x_m0_5))
-		+ (u_m1 - u_0) * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_1_5 - x_0_5)/(x_0_5 - x_m1_5)) ;
+		- (u_m1 - u_0) * ((x_0_5 - x_m0_5)/(x_1_5 - x_m1_5)) * ((x_1_5 - x_0_5)/(x_0_5 - x_m1_5)) ;
 	v2 = u_m1
 		+ (u_m2 - u_m1) * ((x_0_5 - x_m0_5)/(x_m0_5 - x_m2_5)) * ((x_0_5 - x_m1_5)/(x_0_5 - x_m2_5))
 		+ (u_0 - u_m1) * (1.0 + (x_0_5 - x_m0_5)/(x_0_5 - x_m1_5) + (x_0_5 - x_m0_5)/(x_0_5 - x_m2_5)) ;
@@ -501,7 +639,7 @@ void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, d
 	s1 = 4.0 * pow( (x_0_5 - x_m0_5)/(x_1_5 - x_m1_5), 2) * 
 		(
 			pow( (u_m1 - u_0)/(x_0_5 - x_m1_5), 2) * 
-				( 10.0 * pow(x_0_5 - x_m0_5,2) + (x_1_5 - x_m0_5)/(x_1_5 - x_0_5) 
+				( 10.0 * pow(x_0_5 - x_m0_5,2) + (x_1_5 - x_m0_5) * (x_1_5 - x_0_5) 
 				)
 			+ (u_1 - u_0) * (u_m1 - u_0) / ((x_1_5 - x_m0_5)*(x_0_5 - x_m1_5)) *
 				( 20.0 * pow(x_0_5 - x_m0_5,2) - (x_1_5 - x_0_5)*(x_m0_5 - x_m1_5) 
@@ -517,7 +655,7 @@ void weno_nonuniform(double & d_fore, double & d_back, double h3m, double h2m, d
 				( 10.0 * pow(x_0_5 - x_m0_5, 2) + (x_0_5 - x_m1_5)*(x_m0_5 - x_m1_5)
 				)
 			+ (u_0 - u_m1)*(u_m2 - u_m1) / ((x_0_5 - x_m1_5)*(x_m0_5 - x_m2_5)) *
-				( 20.0 * pow(x_0_5-x_m0_5, 2)+ 2.0 * (x_0_5 - x_1_5)*(x_0_5 - x_m1_5)
+				( 20.0 * pow(x_0_5-x_m0_5, 2)+ 2.0 * (x_0_5 - x_1_5)*(x_m0_5 - x_m1_5) 
 				  + (x_0_5 - x_m2_5)*(x_0_5 + x_m0_5 - 2.0 * x_m1_5)
 				)
 			+ pow( (u_0 - u_m1)/(x_0_5 - x_m1_5), 2) *
@@ -545,8 +683,18 @@ __device__ inline
 void weno_derivative_boundary(double & d_fore, double & d_back, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
 {
 	bool cross_interface = p3*p4<0 || p4*p5<0;
+	//bool cross_interface = p3*p4<0 || p4*p5<0 || p2*p3<0 || p5*p6<0;
 
-	if(!cross_interface){
+	if(cross_interface){
+		double h3m,h2m,h1m,h0,h1,h2,h3;
+		double x3m,x2m,x1m,x0,x1,x2,x3;
+		select_stencil_1(h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,ds);
+		//select_stencil_0(h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,ds);
+		//ENO_cubic_derivative(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3);
+		weno_nonuniform(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3); 
+		// weno_nonuniform gives much better results
+	}// for nodes IMMEDIATELY adjacent to the boundary, use cubic ENO interpolant
+	else{
 		double v1 = (p2 - p1) / ds;
 		double v2 = (p3 - p2) / ds;
 		double v3 = (p4 - p3) / ds;
@@ -555,20 +703,63 @@ void weno_derivative_boundary(double & d_fore, double & d_back, double p1, doubl
 		double v6 = (p7 - p6) / ds;
 		d_back = weno_onesided_derivative(v1,v2,v3,v4,v5);
 		d_fore = weno_onesided_derivative(v6,v5,v4,v3,v2);
+		//d_back = weno6_onesided_derivative(v1,v2,v3,v4,v5,v6); // less accurate
+		//d_fore = weno6_onesided_derivative(v6,v5,v4,v3,v2,v1);
 	}// if not a node IMMEDIATELY adjacent to the boundary, calculate weno derivatives as usual
-	else{
+}
+
+__device__ inline
+void weno_derivative_boundary_backup(double & d_fore, double & d_back, double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
+{
+	bool cross_interface_1 = p3*p4<0 || p4*p5<0;
+	bool cross_interface_2 = p2*p3<0 || p5*p6<0;
+	//bool cross_interface = p3*p4<0 || p4*p5<0 || p2*p3<0 || p5*p6<0;
+
+	if(cross_interface_1){
 		double h3m,h2m,h1m,h0,h1,h2,h3;
 		double x3m,x2m,x1m,x0,x1,x2,x3;
-		select_stencil(h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,ds);
+		select_stencil_1(h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,ds);
 		//ENO_cubic_derivative(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3);
 		weno_nonuniform(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3);
 	}// for nodes IMMEDIATELY adjacent to the boundary, use cubic ENO interpolant
+	else if(cross_interface_2){
+		double v1 = (p2 - p1) / ds;
+		double v2 = (p3 - p2) / ds;
+		double v3 = (p4 - p3) / ds;
+		double v4 = (p5 - p4) / ds;
+		double v5 = (p6 - p5) / ds;
+		double v6 = (p7 - p6) / ds;
+		d_back = weno_onesided_derivative(v1,v2,v3,v4,v5);
+		d_fore = weno_onesided_derivative(v6,v5,v4,v3,v2);
+		//d_back = weno6_onesided_derivative(v1,v2,v3,v4,v5,v6);
+		//d_fore = weno6_onesided_derivative(v6,v5,v4,v3,v2,v1);
+		//double h3m,h2m,h1m,h0,h1,h2,h3;
+		//double x3m,x2m,x1m,x0,x1,x2,x3;
+		//select_stencil_2(h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,ds);
+		//ENO_cubic_derivative(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3);
+		//weno_nonuniform(d_fore,d_back,h3m,h2m,h1m,h0,h1,h2,h3,x3m,x2m,x1m,x0,x1,x2,x3);
+	}
+	else{
+		double v1 = (p2 - p1) / ds;
+		double v2 = (p3 - p2) / ds;
+		double v3 = (p4 - p3) / ds;
+		double v4 = (p5 - p4) / ds;
+		double v5 = (p6 - p5) / ds;
+		double v6 = (p7 - p6) / ds;
+		//d_back = weno_onesided_derivative(v1,v2,v3,v4,v5);
+		//d_fore = weno_onesided_derivative(v6,v5,v4,v3,v2);
+		d_back = weno6_onesided_derivative(v1,v2,v3,v4,v5,v6);
+		d_fore = weno6_onesided_derivative(v6,v5,v4,v3,v2,v1);
+	}// if not a node IMMEDIATELY adjacent to the boundary, calculate weno derivatives as usual
+}
 }
 
 // make corrections to xpr etc with cubic interpolation
 __global__
 void boundary_correction_backup(double * xpr, double * xpl, double * ypf, double * ypb, double * zpu, double * zpd, double const * lsf, int num_ele, int rows, int cols, int pges, double dx, double dy, double dz)
 {
+	using namespace bd;
+
 	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
 	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
@@ -611,9 +802,12 @@ void boundary_correction_backup(double * xpr, double * xpl, double * ypf, double
 }
 
 // make corrections to xpr etc with 5th order interpolation
+// seems that 6th order interpolation gives the same results as cubic interpolation
 __global__
 void boundary_correction(double * xpr, double * xpl, double * ypf, double * ypb, double * zpu, double * zpd, double const * lsf, int num_ele, int rows, int cols, int pges, double dx, double dy, double dz)
 {
+	using namespace bd;
+
 	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
 	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
@@ -661,10 +855,11 @@ void boundary_correction(double * xpr, double * xpl, double * ypf, double * ypb,
 
 }
 
-
 __global__
 void re_step(double * step, double const * lsf, bool const * mask, double const * deltat, double const * xpr, double const * xpl, double const * ypf, double const * ypb, double const * zpu, double const * zpd, int rows, int cols, int pges, double dx, double dy, double dz, int num_ele)
 {
+	using namespace rs;
+
 	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
 	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
@@ -736,12 +931,12 @@ void re_step(double * step, double const * lsf, bool const * mask, double const 
 	double yF, yB;
 	weno_derivative_boundary(yF,yB,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,dy);
 
-	int upup1	= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);	
-	int upup2	= sub2ind(row_idx, col_idx, pge_idx+2, rows, cols, pges);	
-	int upup3	= sub2ind(row_idx, col_idx, pge_idx+3, rows, cols, pges);	
-	int down1 	= sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
-	int down2 	= sub2ind(row_idx, col_idx, pge_idx-2, rows, cols, pges);
-	int down3 	= sub2ind(row_idx, col_idx, pge_idx-3, rows, cols, pges);
+	int upup1	= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);
+	int upup2	= sub2ind(row_idx, col_idx, pge_idx+2, rows, cols, pges);
+	int upup3	= sub2ind(row_idx, col_idx, pge_idx+3, rows, cols, pges);
+	int down1	= sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
+	int down2	= sub2ind(row_idx, col_idx, pge_idx-2, rows, cols, pges);
+	int down3	= sub2ind(row_idx, col_idx, pge_idx-3, rows, cols, pges);
 
 	p1 = lsf[down3];
 	p2 = lsf[down2];
@@ -760,18 +955,23 @@ void re_step(double * step, double const * lsf, bool const * mask, double const 
 
 	double zU, zD;
 	weno_derivative_boundary(zU,zD,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,dz);
+
+	//double smoothSign = p4 / sqrt(p4*p4 + sqrt(dx) );
+	//double smoothSign = p4 / sqrt(p4*p4 + dx * dx );
+	double smoothSign = sign(p4); // performs better than the versions above
 	
 	if (mask[ind]) {
 		step[ind] = ( sqrt(	max2(pow(min2(0,xL),2),pow(max2(0,xR),2)) + 
 							max2(pow(min2(0,yB),2),pow(max2(0,yF),2)) + 
-
-							max2(pow(min2(0,zD),2),pow(max2(0,zU),2)) ) - 1)
-					* deltat[ind] * (-1.);
+							max2(pow(min2(0,zD),2),pow(max2(0,zU),2)) ) - 1
+					) * deltat[ind] * smoothSign;
+					//) * deltat[ind] * (-1.);
 	} else{
 		step[ind] = ( sqrt(	max2(pow(max2(0,xL),2),pow(min2(0,xR),2)) + 
 							max2(pow(max2(0,yB),2),pow(min2(0,yF),2)) + 
-							max2(pow(max2(0,zD),2),pow(min2(0,zU),2)) ) - 1)
-			* deltat[ind] * (1.);
+							max2(pow(max2(0,zD),2),pow(min2(0,zU),2)) ) - 1
+					) * deltat[ind] * smoothSign;
+					//) * deltat[ind] * (1.);
 	}
 }
 

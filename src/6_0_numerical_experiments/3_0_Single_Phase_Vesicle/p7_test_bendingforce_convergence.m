@@ -2,17 +2,17 @@
 % calculated with FDM from a level set approach to see if there is
 % any error in implementation
 
-Size = [64,64,64];
+%Size = [64,64,64];
 %Size = [96,96,96];
-%Size = [128,128,128];
+Size = [128,128,128];
 %Size = [192,192,192];
 %Size = [256,256,256];
 [X,Y,Z,f,Nx,Ny,Nz,MC,SL_MC] = SD.Shape.RedBloodCell(Size,1.0);
 
 grid = SD.GD3(X,Y,Z);
 map = SD.SDF3(grid,X,Y,Z,f(X,Y,Z));
-%map.F = map.WENO5RK3Reinitialization(map.F,300);
-map.F = map.WENORK3Reinitialization(map.F,300);
+map.F = map.WENO5RK3Reinitialization(map.F,300);
+%map.F = map.WENORK3Reinitialization(map.F,300);
 map.setCalculusToolBox4
 
 % theoretical Normal, MeanCurvature and Surface Laplacian of MeanCurvature
