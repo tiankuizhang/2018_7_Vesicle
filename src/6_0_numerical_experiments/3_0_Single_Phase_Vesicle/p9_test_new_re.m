@@ -16,6 +16,7 @@ grid = SD.GD3(x,y,z);
 F = x.^2 + y.^2 + z.^2 - r^2;
 
 map = SD.SDF3(grid,x,y,z,F);
+map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,1000);
 map.setCalculusToolBox4;
 MC = map.WENORK3Extend(map.MeanCurvature,100);
@@ -49,6 +50,7 @@ grid = SD.GD3(x,y,z);
 F = x.^2 + y.^2 + z.^2 - r^2;
 
 map = SD.SDF3(grid,x,y,z,F);
+map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,1000);
 map.setCalculusToolBox4;
 MC = map.WENORK3Extend(map.MeanCurvature,100);
@@ -82,6 +84,7 @@ grid = SD.GD3(x,y,z);
 F = x.^2 + y.^2 + z.^2 - r^2;
 
 map = SD.SDF3(grid,x,y,z,F);
+map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,1000);
 map.setCalculusToolBox4;
 MC = map.WENORK3Extend(map.MeanCurvature,100);
@@ -115,6 +118,7 @@ grid = SD.GD3(x,y,z);
 F = x.^2 + y.^2 + z.^2 - r^2;
 
 map = SD.SDF3(grid,x,y,z,F);
+map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,1000);
 map.setCalculusToolBox4;
 MC = map.WENORK3Extend(map.MeanCurvature,100);

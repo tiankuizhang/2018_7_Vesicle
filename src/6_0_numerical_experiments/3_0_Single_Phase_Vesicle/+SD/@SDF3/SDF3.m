@@ -44,6 +44,14 @@ classdef SDF3 < handle
 		HPrimal % max(0,F)
 		Heaviside
 		DiracDelta
+
+		xpr % distance to the right boundary if there is boundary to the right
+		xpl
+		ypf
+		ypb
+		zpu
+		zpd
+		min_dist
 	end
 
 
@@ -52,6 +60,7 @@ classdef SDF3 < handle
 		setCalculustToolBox(obj)
 		setCalculustToolBox4(obj)
 		GPUsetCalculusToolBox(obj)  
+		setDistance(obj)
 	end
 
 	methods
@@ -214,11 +223,16 @@ classdef SDF3 < handle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % utilities : reinitliazation, extend, surface_redistance
 	methods
+		% reinitialization schemes of various orders of accuracy
 		NewF = ENORK2Reinitialization(obj,F,iteration)
 		NewF = WENORK3Reinitialization(obj,F,iteration)
 		NewF = WENO5RK3Reinitialization(obj,F,iteration)
+		
+		% extend schems of various orders of accuracy
 		NewC = ENORK2Extend(obj, C, iteration)
 		NewC = WENORK3Extend(obj, C, iteration)
+
+		% surface redistance schemes of various orders of accuracy
 		NewA = ENORK2ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 		NewA = WENORK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 	end
