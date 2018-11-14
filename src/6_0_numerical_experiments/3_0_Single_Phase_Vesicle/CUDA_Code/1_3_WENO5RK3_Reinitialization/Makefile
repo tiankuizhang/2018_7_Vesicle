@@ -1,4 +1,7 @@
-all: weno5_rk3_reinitialization.ptx
+all: re_step.ptx boundary_location.ptx
 
-weno5_rk3_reinitialization.ptx: weno5_rk3_reinitialization.cu
-	nvcc -ptx weno5_rk3_reinitialization.cu -o weno5_rk3_reinitialization.ptx
+re_step.ptx: re_step.cu shared_utilities.hpp
+	nvcc -ptx re_step.cu -o re_step.ptx
+
+boundary_location.ptx: boundary_location.cu shared_utilities.hpp
+	nvcc -ptx boundary_location.cu -o boundary_location.ptx
