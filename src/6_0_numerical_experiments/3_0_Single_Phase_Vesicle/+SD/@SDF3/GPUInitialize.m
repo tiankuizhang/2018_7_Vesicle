@@ -1,15 +1,16 @@
 % initialize GPU functions
 function GPUInitialize(obj)
-	
-	fprintf("start compiling .cu into .ptx files . . .")
+
+	%fprintf('\t\t creating CUDAKernel ...')
 
 	obj.ThreadBlockSize = [obj.GD3.mrows,floor(512/obj.GD3.mrows),1];
 	obj.GridSize = [ceil(obj.GD3.mrows/obj.ThreadBlockSize(1)), ...
 					ceil(obj.GD3.ncols/obj.ThreadBlockSize(2)), ...
 					ceil(obj.GD3.lshts/obj.ThreadBlockSize(3))];
 
-	% functions used by reinitialization scheme and other schemes
-	system('nvcc -Wno-deprecated-gpu-targets -ptx CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.cu -o CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.ptx');
+	% functions used by 3rd order reinitialization scheme and other schemes
+	[status, cmdout] = system('make -C CUDA_Code/1_0_ENORK2_Reinitialization');
+	if status, error(cmdout), end % if compilation failed, throw and output error message
 
 	obj.ENORK2_boundary_correction = parallel.gpu.CUDAKernel('CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.ptx', ...
 															 'CUDA_Code/1_0_ENORK2_Reinitialization/boundary_correction.cu', ...
@@ -23,8 +24,9 @@ function GPUInitialize(obj)
 	obj.ENORK2_reinitiliaztion_step.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.ENORK2_reinitiliaztion_step.GridSize = obj.GridSize;
 
-	% function used by WENO reinitialization scheme
-	system('nvcc -Wno-deprecated-gpu-targets -ptx CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.cu -o CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.ptx');
+	% function used by 4th order WENO reinitialization scheme
+	[status, cmdout] = system('make -C CUDA_Code/1_1_WENORK3_Reinitialization');
+	if status, error(cmdout), end % if compilation failed, throw and output error message
 
 	obj.cubic_boundary_correction = parallel.gpu.CUDAKernel('CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.ptx', ...
 															'CUDA_Code/1_1_WENORK3_Reinitialization/weno_rk3_reinitialization.cu', ...
@@ -38,8 +40,9 @@ function GPUInitialize(obj)
 	obj.WENORK3_reinitialization_step.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.WENORK3_reinitialization_step.GridSize = obj.GridSize;
 
-	% function used by WENO5 reinitialization scheme
-	system('nvcc -Wno-deprecated-gpu-targets -ptx CUDA_Code/1_3_WENO5RK3_Reinitialization/weno5_rk3_reinitialization.cu -o CUDA_Code/1_3_WENO5RK3_Reinitialization/weno5_rk3_reinitialization.ptx');
+	% function used by 6th order WENO5 reinitialization scheme
+	[status, cmdout] = system('make -C CUDA_Code/1_3_WENO5RK3_Reinitialization');
+	if status, error(cmdout), end % if compilation failed, throw and output error message
 
 	obj.sixth_boundary_correction = parallel.gpu.CUDAKernel('CUDA_Code/1_3_WENO5RK3_Reinitialization/weno5_rk3_reinitialization.ptx', ...
 															'CUDA_Code/1_3_WENO5RK3_Reinitialization/weno5_rk3_reinitialization.cu', ...
@@ -53,8 +56,9 @@ function GPUInitialize(obj)
 	obj.WENO5RK3_reinitialization_step.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.WENO5RK3_reinitialization_step.GridSize = obj.GridSize;
 
-	% functions used by the extend scheme and other schemes
-	system('nvcc -Wno-deprecated-gpu-targets -ptx CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu -o CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx');
+	% functions used by the 3rd order extend scheme and other schemes
+	[status, cmdout] = system('make -C CUDA_Code/2_0_ENORK2_Extend');
+	if status, error(cmdout), end % if compilation failed, throw and output error message
 
 	obj.ENORK2_upwind_normal = parallel.gpu.CUDAKernel(	'CUDA_Code/2_0_ENORK2_Extend/enork2_extend.ptx', ...
 		   												'CUDA_Code/2_0_ENORK2_Extend/enork2_extend.cu', ...
@@ -74,8 +78,9 @@ function GPUInitialize(obj)
 	obj.ENORK2_boundary_interpolate.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.ENORK2_boundary_interpolate.GridSize = obj.GridSize;		
 
-	% functions used by the WENO extend scheme and other schemes
-	system('nvcc -Wno-deprecated-gpu-targets -ptx CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.cu -o CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.ptx');
+	% functions used by the 4th order WENO extend scheme and other schemes
+	[status, cmdout] = system('make -C CUDA_Code/2_1_WENORK3_Extend');
+	if status, error(cmdout), end % if compilation failed, throw and output error message
 
 	obj.WENORK3_upwind_normal = parallel.gpu.CUDAKernel('CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.ptx', ...
 		   											    'CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.cu', ...
@@ -96,7 +101,8 @@ function GPUInitialize(obj)
 	obj.WENORK3_boundary_interpolate.GridSize = obj.GridSize;		
 
 	% functions used by GPUsetCalculusTooBox scheme
-	system('nvcc -Wno-deprecated-gpu-targets -ptx CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.cu -o CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.ptx');
+	[status, cmdout] = system('make -C CUDA_Code/4_0_Calculus_ToolBox');
+	if status, error(cmdout), end % if compilation failed, throw and output error message
 
 	obj.set_calculus_toolbox = parallel.gpu.CUDAKernel('CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.ptx', ...
 													   'CUDA_Code/4_0_Calculus_ToolBox/calculus_toolbox.cu', ...
@@ -111,7 +117,8 @@ function GPUInitialize(obj)
 	obj.auxi_set_calculus_toolbox.GridSize = obj.GridSize;
 
 	% functions used for calculating weno derivatives
-	system('nvcc -Wno-deprecated-gpu-targets -ptx CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.cu -o CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.ptx');
+	[status, cmdout] = system('make -C CUDA_Code/5_0_Nonoscillating_Reconstruction');
+	if status, error(cmdout), end % if compilation failed, throw and output error message
 
 	obj.GD3.weno_derivative = parallel.gpu.CUDAKernel('CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.ptx', ...
 												  	  'CUDA_Code/5_0_Nonoscillating_Reconstruction/nonoscillating_interpolant.cu', ...
@@ -131,7 +138,7 @@ function GPUInitialize(obj)
 	obj.spatial_finite_volume_step.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.spatial_finite_volume_step.GridSize = obj.GridSize;
 
-	fprintf("finished compilation!\n")
+	%fprintf('finished !\n')
 end
 
 
