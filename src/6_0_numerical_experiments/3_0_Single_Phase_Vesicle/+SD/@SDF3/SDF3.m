@@ -205,6 +205,11 @@ classdef SDF3 < handle
 			WENORK3_boundary_interpolate % interpolate values at the boundary
 			WENORK3_extend_step % calculate the extension step
 
+		% kernel functions object for WENORK3 extend scheme
+			WENO5RK3_upwind_normal % calculate upwind normals of the level set function
+			WENO5RK3_boundary_interpolate % interpolate values at the boundary
+			WENO5RK3_extend_step % calculate the extension step
+
 		% kernel function object for GPUsetCalculusToolBox scheme
 			set_calculus_toolbox % set Fx,Fy ...
 			auxi_set_calculus_toolbox % set Ax,Ay ...
@@ -231,6 +236,7 @@ classdef SDF3 < handle
 		% extend schems of various orders of accuracy
 		NewC = ENORK2Extend(obj, C, iteration)
 		NewC = WENORK3Extend(obj, C, iteration)
+		NewC = WENO5RK3Extend(obj, C, iteration)
 
 		% surface redistance schemes of various orders of accuracy
 		NewA = ENORK2ClosetPointSurfaceRedistance(obj,A,iter1,iter2)

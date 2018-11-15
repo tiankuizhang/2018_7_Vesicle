@@ -36,7 +36,6 @@ double sign(double x)
 
 
 // convert subindex to linear index
-// periodic boundary conditions are assumed
 __device__ inline
 int sub2ind(int row_idx, int col_idx, int pge_idx, int rows, int cols, int pges)
 {	

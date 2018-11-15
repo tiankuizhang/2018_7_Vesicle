@@ -79,51 +79,6 @@ double six_distance(double v0, double v1, double v2, double v3, double v4, doubl
 	return (xc - 2*s);
 }
 
-// make corrections to xpr etc with cubic interpolation
-__global__
-void boundary_location_backup(double * xpr, double * xpl, double * ypf, double * ypb, double * zpu, double * zpd, double const * lsf, int num_ele, int rows, int cols, int pges, double dx, double dy, double dz)
-{
-	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
-	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
-
-	if(row_idx >= rows || col_idx >= cols || pge_idx >= pges){
-		return;
-	}
-
-	double f2;
-	int ind = sub2ind(row_idx, col_idx, pge_idx, rows, cols, pges);
-	double f0 = lsf[ind];
-
-	int right = sub2ind(row_idx, col_idx+1, pge_idx, rows, cols, pges);
-	f2 = lsf[right];
-	if(f0*f2<0){
-		int left = sub2ind(row_idx, col_idx-1, pge_idx, rows, cols, pges);
-		int right2 = sub2ind(row_idx, col_idx+2, pge_idx, rows, cols, pges);
-		xpr[ind] = cubic_distance(lsf[left], f0, f2, lsf[right2], dx);
-		xpl[right] = dx - xpr[ind];
-	}
-
-	int front = sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);
-	f2 = lsf[front];
-	if(f0*f2<0){
-		int back = sub2ind(row_idx-1, col_idx, pge_idx, rows, cols, pges);
-		int front2 = sub2ind(row_idx+2, col_idx, pge_idx, rows, cols, pges);
-		ypf[ind] = cubic_distance(lsf[back], f0, f2, lsf[front2], dy);
-		ypb[front] = dy - ypf[ind];
-	}
-
-	int up = sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);
-	f2 = lsf[up];
-	if(f0*f2<0){
-		int down = sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
-		int up2 = sub2ind(row_idx, col_idx, pge_idx+2, rows, cols, pges);
-		zpu[ind] = cubic_distance(lsf[down], f0, f2, lsf[up2], dz);
-		zpd[up] = dz - zpu[ind];
-	}
-
-}
-
 // make corrections to xpr etc with 5th order interpolation
 // seems that 6th order interpolation gives the same results as cubic interpolation
 __global__
