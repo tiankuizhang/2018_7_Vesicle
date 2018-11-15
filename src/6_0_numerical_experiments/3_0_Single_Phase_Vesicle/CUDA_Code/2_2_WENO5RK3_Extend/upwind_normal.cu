@@ -1,7 +1,6 @@
 #include "shared_utilities.cuh"
 #include "shared_utilities.cup"
 
-
 __device__ inline
 double upwind_normal_point(double p1, double p2, double p3, double p4, double p5, double p6, double p7, double r1, double r2, double r3, double l1, double l2, double l3, double ds)
 {

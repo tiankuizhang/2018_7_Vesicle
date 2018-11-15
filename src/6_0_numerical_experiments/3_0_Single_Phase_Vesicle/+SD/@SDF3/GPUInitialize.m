@@ -3,7 +3,8 @@ function GPUInitialize(obj)
 
 	%fprintf('\t\t creating CUDAKernel ...')
 
-	obj.ThreadBlockSize = [obj.GD3.mrows,floor(512/obj.GD3.mrows),1];
+	%obj.ThreadBlockSize = [obj.GD3.mrows,floor(512/obj.GD3.mrows),1];
+	obj.ThreadBlockSize = [obj.GD3.mrows,floor(256/obj.GD3.mrows),1];
 	obj.GridSize = [ceil(obj.GD3.mrows/obj.ThreadBlockSize(1)), ...
 					ceil(obj.GD3.ncols/obj.ThreadBlockSize(2)), ...
 					ceil(obj.GD3.lshts/obj.ThreadBlockSize(3))];
@@ -83,22 +84,44 @@ function GPUInitialize(obj)
 	if status, error(cmdout), end % if compilation failed, throw and output error message
 
 	obj.WENORK3_upwind_normal = parallel.gpu.CUDAKernel('CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.ptx', ...
-		   											    'CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.cu', ...
-												   	    'upwind_normal');
+														'CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.cu', ...
+														'upwind_normal');
 	obj.WENORK3_upwind_normal.ThreadBlockSize = obj.ThreadBlockSize;
-	obj.WENORK3_upwind_normal.GridSize = obj.GridSize;		
+	obj.WENORK3_upwind_normal.GridSize = obj.GridSize;
 
-	obj.WENORK3_extend_step = parallel.gpu.CUDAKernel('CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.ptx', ...
-		   											  'CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.cu', ...
-												   	  'extend_step');
+	obj.WENORK3_extend_step = parallel.gpu.CUDAKernel(  'CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.ptx', ...
+														'CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.cu', ...
+														'extend_step');
 	obj.WENORK3_extend_step.ThreadBlockSize = obj.ThreadBlockSize;
-	obj.WENORK3_extend_step.GridSize = obj.GridSize;		
+	obj.WENORK3_extend_step.GridSize = obj.GridSize;
 
-	obj.WENORK3_boundary_interpolate = parallel.gpu.CUDAKernel('CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.ptx', ...
-		   											 		   'CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.cu', ...
-		          										   	   'boundary_interpolate');
+	obj.WENORK3_boundary_interpolate = parallel.gpu.CUDAKernel( 'CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.ptx', ...
+																'CUDA_Code/2_1_WENORK3_Extend/wenork3_extend.cu', ...
+																'boundary_interpolate');
 	obj.WENORK3_boundary_interpolate.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.WENORK3_boundary_interpolate.GridSize = obj.GridSize;		
+
+	% functions used by 6th order WENO extend scheme and other schemes
+	[status, cmdout] = system('make -C CUDA_Code/2_2_WENO5RK3_Extend');
+	if status, error(cmdout), end;
+
+	obj.WENO5RK3_upwind_normal = parallel.gpu.CUDAKernel('CUDA_Code/2_2_WENO5RK3_Extend/upwind_normal.ptx', ...
+														 'CUDA_Code/2_2_WENO5RK3_Extend/upwind_normal.cu', ...
+														 'upwind_normal');
+	obj.WENO5RK3_upwind_normal.ThreadBlockSize = obj.ThreadBlockSize;
+	obj.WENO5RK3_upwind_normal.GridSize = obj.GridSize;
+
+	obj.WENO5RK3_extend_step = parallel.gpu.CUDAKernel( 'CUDA_Code/2_2_WENO5RK3_Extend/extend_step.ptx', ...
+														'CUDA_Code/2_2_WENO5RK3_Extend/extend_step.cu', ...
+														'extend_step');
+	obj.WENO5RK3_extend_step.ThreadBlockSize = obj.ThreadBlockSize;
+	obj.WENO5RK3_extend_step.GridSize = obj.GridSize;
+
+	obj.WENO5RK3_boundary_interpolant = parallel.gpu.CUDAKernel('CUDA_Code/2_2_WENO5RK3_Extend/boundary_interpolant.ptx', ...
+																'CUDA_Code/2_2_WENO5RK3_Extend/boundary_interpolant.cu', ...
+																'boundary_interpolant');
+	obj.WENO5RK3_boundary_interpolant.ThreadBlockSize = obj.ThreadBlockSize;
+	obj.WENO5RK3_boundary_interpolant.GridSize = obj.GridSize;
 
 	% functions used by GPUsetCalculusTooBox scheme
 	[status, cmdout] = system('make -C CUDA_Code/4_0_Calculus_ToolBox');

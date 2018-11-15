@@ -36,7 +36,7 @@ void sixth_interp(double & c_forward, double & c_backward, double dis_f, double 
 
 // interpolate values at boundary points
 __global__
-void boundary_interpolate(double * cpr, double * cpl, double * cpf, double * cpb, double * cpu, double * cpd, double const * xpr, double const * xpl, double const * ypf, double const * ypb, double const * zpu, double const * zpd, double const * lsf, int rows, int cols, int pges, double dx, double dy, double dz, int num_ele)
+void boundary_interpolant(double * cpr, double * cpl, double * cpf, double * cpb, double * cpu, double * cpd, double const * xpr, double const * xpl, double const * ypf, double const * ypb, double const * zpu, double const * zpd, double const * lsf, int rows, int cols, int pges, double dx, double dy, double dz, int num_ele)
 {
 	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;

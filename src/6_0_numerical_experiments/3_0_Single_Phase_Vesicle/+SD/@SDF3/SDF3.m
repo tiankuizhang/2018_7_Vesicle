@@ -207,7 +207,7 @@ classdef SDF3 < handle
 
 		% kernel functions object for WENORK3 extend scheme
 			WENO5RK3_upwind_normal % calculate upwind normals of the level set function
-			WENO5RK3_boundary_interpolate % interpolate values at the boundary
+			WENO5RK3_boundary_interpolant % interpolate values at the boundary
 			WENO5RK3_extend_step % calculate the extension step
 
 		% kernel function object for GPUsetCalculusToolBox scheme
