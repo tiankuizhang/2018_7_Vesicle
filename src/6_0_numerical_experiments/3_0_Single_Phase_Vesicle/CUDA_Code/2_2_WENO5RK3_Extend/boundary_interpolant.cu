@@ -24,8 +24,8 @@ void sixth_interp(double & c_forward, double & c_backward, double dis_f, double 
 		c_forward = p5_f(3*s + dis_f);
 	}
 	// if there is a boundary in the backward direction
-	if(dis_f<s){
-		double xf[6] = {0,s,2*s,3*s,4*s,5*s};
+	if(dis_b<s){
+		double xf[6] = {0.0,s,2*s,3*s,4*s,5*s};
 		double yf[6] = {v0,v1,v2,v3,v4,v5};
 		Poly<5> p5_b;
 		p5_b.setInterpolation(xf,yf);
