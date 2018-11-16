@@ -157,6 +157,7 @@ classdef SDF3 < handle
 
 	methods
 		AsetCalculusToolBox(obj)
+		AsetCalculusToolBox4(obj)
 		GPUAsetCalculusToolBox(obj)
 	end
 
@@ -241,6 +242,7 @@ classdef SDF3 < handle
 		% surface redistance schemes of various orders of accuracy
 		NewA = ENORK2ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 		NewA = WENORK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
+		NewA = WENO5RK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 	end
 
 	methods
