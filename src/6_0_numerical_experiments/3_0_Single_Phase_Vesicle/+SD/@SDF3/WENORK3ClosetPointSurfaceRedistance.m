@@ -80,14 +80,14 @@ function NewA = WENORK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 	step = zeros(obj.GD3.Size, 'gpuArray');
 	NewA = A;
 	for i=1:iter1
-		NewA = ENORK2Extend(obj,NewA,iter2,fxpr,fxpl,fypf,fypb,fzpu,fzpd,vx,vy,vz,fdeltat,...
-				cpr,cpl,cpf,cpb,cpu,cpd);
+		NewA = ENORK2Extend(obj,NewA,iter2,fxpr,fxpl,fypf,fypb,fzpu,fzpd,vx,vy,vz,fdeltat,cpr,cpl,cpf,cpb,cpu,cpd);
 
 		step = feval(obj.WENORK3_reinitialization_step, step, NewA, mask, deltat, ...
 				xpr, xpl, ypf, ypb, zpu, zpd, ...
 		    	obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
 				obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
 		Atmp1 = NewA - step;
+		Atmp1 = ENORK2Extend(obj,Atmp1,iter2,fxpr,fxpl,fypf,fypb,fzpu,fzpd,vx,vy,vz,fdeltat,cpr,cpl,cpf,cpb,cpu,cpd);
 	
 		step = feval(obj.WENORK3_reinitialization_step, step, Atmp1, mask, deltat, ...
 				xpr, xpl, ypf, ypb, zpu, zpd, ...
@@ -96,6 +96,7 @@ function NewA = WENORK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 		Atmp2 = Atmp1 - step;
 
 		Atmp0_5 = 3./4. * NewA + 1./4. * Atmp2;
+		Atmp0_5 = ENORK2Extend(obj,Atmp0_5,iter2,fxpr,fxpl,fypf,fypb,fzpu,fzpd,vx,vy,vz,fdeltat,cpr,cpl,cpf,cpb,cpu,cpd);
 
 		step = feval(obj.WENORK3_reinitialization_step, step, Atmp0_5, mask, deltat, ...
 				xpr, xpl, ypf, ypb, zpu, zpd, ...
@@ -105,6 +106,7 @@ function NewA = WENORK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 
 		NewA = 1./3. * NewA + 2./3. * Atmp1_5;
 	end
+	NewA = ENORK2Extend(obj,NewA,iter2,fxpr,fxpl,fypf,fypb,fzpu,fzpd,vx,vy,vz,fdeltat,cpr,cpl,cpf,cpb,cpu,cpd);
 
 end
 

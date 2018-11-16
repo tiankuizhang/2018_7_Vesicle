@@ -167,6 +167,10 @@ classdef SDF3 < handle
 			mask = abs(obj.F) < 2*obj.GD3.Ds & abs(obj.A) < 2*obj.GD3.Ds;
 			length = sum(obj.AFDiracDelta(mask).*obj.NormCrossAF(mask)) * obj.GD3.Ds.^3;
 		end
+		function val = LineIntegral(obj, field)
+			mask = abs(obj.F) < 2*obj.GD3.Ds & abs(obj.A) < 2*obj.GD3.Ds;
+			val = sum(field(mask).*obj.AFDiracDelta(mask).*obj.NormCrossAF(mask)) * obj.GD3.Ds.^3;
+		end
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
