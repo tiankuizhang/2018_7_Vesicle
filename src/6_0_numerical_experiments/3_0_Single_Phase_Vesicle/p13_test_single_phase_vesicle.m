@@ -1,10 +1,13 @@
 % simulate single phase vesicle without imcompressibility
+% using high order schemes 
+% it seems that directly using a larger stencil will not give the correct dynamics
 
 % create the initial distance map
 [x,y,z,f] = SD.Shape.Ellipsoid([128,128,64],0.65,"o");
 grid = SD.GD3(x,y,z);
 map = SD.SDF3(grid,x,y,z,f);
-map.F = map.WENORK3Reinitialization(map.F,100);
+map.setDistance
+map.F = map.WENO5RK3Reinitialization(map.F,100);
 
 map.GPUsetCalculusToolBox
 InitialArea = map.calArea;
@@ -31,7 +34,8 @@ CFLNumber = 1.0;
 % dynamics
 time = 0;
 for i = 1:2000
-	map.GPUsetCalculusToolBox
+	%map.GPUsetCalculusToolBox
+	map.setCalculusToolBox4
 	CurrentArea = map.calArea;
 	DiffArea = 100 * (CurrentArea - InitialArea)/InitialArea;
 	CurrentVolume = map.calVolume;
@@ -82,6 +86,7 @@ for i = 1:2000
 	normalSpeedSmoothed = map.WENORK3Extend(normalSpeedSmoothed, 100);
 
 	map.F = map.F - Dt * normalSpeedSmoothed;
+	map.setDistance
 
 	if mod(i,10)==0 
 		timeStr = [sprintf('%04d: %0.5e', i,time)];
@@ -103,8 +108,8 @@ for i = 1:2000
 		end
 	end
 
-	if mod(i,10)==0
-		map.F = map.WENORK3Reinitialization(map.F,100);
+	if mod(i,1)==0
+		map.F = map.WENO5RK3Reinitialization(map.F,100);
 	end
 
 

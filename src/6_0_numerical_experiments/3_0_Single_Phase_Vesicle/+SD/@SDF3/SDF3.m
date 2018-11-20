@@ -60,7 +60,7 @@ classdef SDF3 < handle
 		setCalculustToolBox(obj)
 		setCalculustToolBox4(obj)
 		GPUsetCalculusToolBox(obj)  
-		setDistance(obj)
+		setDistance(obj) % used after F modified and before any use of xpr etc.
 	end
 
 	methods
