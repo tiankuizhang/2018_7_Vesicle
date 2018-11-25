@@ -59,6 +59,7 @@ classdef SDF3 < handle
 		% update the above properties
 		setCalculustToolBox(obj)
 		setCalculustToolBox4(obj)
+		setCalculustToolBoxWENO(obj)
 		GPUsetCalculusToolBox(obj)  
 		setDistance(obj) % used after F modified and before any use of xpr etc.
 	end
@@ -218,6 +219,7 @@ classdef SDF3 < handle
 		% kernel function object for GPUsetCalculusToolBox scheme
 			set_calculus_toolbox % set Fx,Fy ...
 			auxi_set_calculus_toolbox % set Ax,Ay ...
+			upwind_derivative % calculate gradient of some field
 
 		% kernel function for numerical Hamiltonian for surface consevation law
 			surface_conservation_step
@@ -252,6 +254,13 @@ classdef SDF3 < handle
 	methods
 		NewC = WENORK3SurfaceConservationLaw(obj,C,vx,vy,vz,iter,dt);
 		NewC = SurfaceConservationLaw(obj,C,vx,vy,vz,iter,dt);
+	end
+
+	methods
+		[fx,fy,fz] = GradientWENO(obj,f)
+		[fxx,fyy,fzz,fxy,fyz,fzx] = HessianWENO(obj,f)
+		val = LaplacianWENO(obj,f)
+		[fx,fy,fz,fxx,fyy,fzz,fxy,fyz,fzx,f_lap] = GradientHessianLaplacian(obj,f)
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

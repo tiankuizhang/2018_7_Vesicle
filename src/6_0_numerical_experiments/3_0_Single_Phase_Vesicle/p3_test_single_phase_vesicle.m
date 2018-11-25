@@ -30,7 +30,7 @@ CFLNumber = 1.0;
 
 % dynamics
 time = 0;
-for i = 1:2000
+for i = 1:4000
 	map.GPUsetCalculusToolBox
 	CurrentArea = map.calArea;
 	DiffArea = 100 * (CurrentArea - InitialArea)/InitialArea;
@@ -103,7 +103,7 @@ for i = 1:2000
 		end
 	end
 
-	if mod(i,10)==0
+	if mod(i,1)==0
 		map.F = map.WENORK3Reinitialization(map.F,100);
 	end
 

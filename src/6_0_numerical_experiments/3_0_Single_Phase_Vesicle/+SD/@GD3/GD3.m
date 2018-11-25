@@ -311,14 +311,6 @@ classdef GD3 < handle
 			val = (-F22 - Fm2m2 + F2m2 + Fm22 + 16*Field(obj.oXZ) + 16 * Field(obj.oxz) - 16 * Field(obj.oXz) - 16 * Field(obj.oxZ)) / (48*obj.Dz*obj.Dx);
 		end	
 
-		function val = Laplacian(obj, Field)
-			val = obj.Fxx(Field) + obj.Fyy(Field) + obj.Fzz(Field);
-		end
-
-		function val = Laplacian4(obj, Field)
-			val = obj.Fxx4(Field) + obj.Fyy4(Field) + obj.Fzz4(Field);
-		end
-
 		function [fx,fy,fz] = Gradient(obj,f)
 			fx = obj.Fx(f);
 			fy = obj.Fy(f);
@@ -347,6 +339,14 @@ classdef GD3 < handle
 			fxy = obj.Fxy4(f);
 			fyz = obj.Fyz4(f);
 			fzx = obj.Fzx4(f);
+		end
+
+		function val = Laplacian(obj, Field)
+			val = obj.Fxx(Field) + obj.Fyy(Field) + obj.Fzz(Field);
+		end
+
+		function val = Laplacian4(obj, Field)
+			val = obj.Fxx4(Field) + obj.Fyy4(Field) + obj.Fzz4(Field);
 		end
 
 		function [wx,wy,wz] = CrossProduct(obj,ux,uy,uz,vx,vy,vz)
