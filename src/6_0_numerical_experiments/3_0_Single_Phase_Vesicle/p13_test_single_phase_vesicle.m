@@ -29,12 +29,13 @@ MaxResolvedCurvature = 2.0 / map.GD3.Ds;
 
 % bending mudulus
 Kappa = 1.0;
-CFLNumber = .1;
+CFLNumber = 1.0;
 
 % dynamics
 time = 0;
-for i = 1:20000
-	map.GPUsetCalculusToolBox
+for i = 1:2000
+	%map.GPUsetCalculusToolBox
+	map.setCalculusToolBoxGA(0.0001)
 	%map.setCalculusToolBox4
 	%map.setCalculusToolBoxWENO
 	CurrentArea = map.calArea;
@@ -89,7 +90,7 @@ for i = 1:20000
 	map.F = map.F - Dt * normalSpeedSmoothed;
 	map.setDistance
 
-	if mod(i,100)==0 
+	if mod(i,10)==0 
 		timeStr = [sprintf('%04d: %0.5e', i,time)];
 
 		clf(FIG)

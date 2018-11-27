@@ -57,8 +57,9 @@ classdef SDF3 < handle
 
 	methods
 		% update the above properties
-		setCalculustToolBox(obj)
-		setCalculustToolBox4(obj)
+		setCalculusToolBox(obj)
+		setCalculusToolBox4(obj)
+		setCalculusToolBoxGA(obj,threshold)
 		setCalculustToolBoxWENO(obj)
 		GPUsetCalculusToolBox(obj)  
 		setDistance(obj) % used after F modified and before any use of xpr etc.
@@ -220,6 +221,7 @@ classdef SDF3 < handle
 			set_calculus_toolbox % set Fx,Fy ...
 			auxi_set_calculus_toolbox % set Ax,Ay ...
 			upwind_derivative % calculate gradient of some field
+			ga_set_calculus_toolbox % geometry aware version of set_calculus_toolbox
 
 		% kernel function for numerical Hamiltonian for surface consevation law
 			surface_conservation_step

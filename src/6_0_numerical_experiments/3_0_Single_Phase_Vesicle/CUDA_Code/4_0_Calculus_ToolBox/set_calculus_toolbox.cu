@@ -7,7 +7,7 @@
 #include "shared_utilities.cup"
 
 __global__ 
-void set_calculus_toolbox(double * Fx, double * Fy, double * Fz, double * FGradMag,	double * Nx, double * Ny, double * Nz, double * Fxx, double * Fyy, double * Fzz, double * Fxy, double * Fyz, double * Fzx, double * FLaplacian, double * MeanCurvature, double * GaussianCurvature, double * Heaviside, double * DiracDelta, double const * lsf, double const * HPrimal, int rows, int cols, int pges, double dx, double dy, double dz, double ds, int num_ele)
+void set_calculus_toolbox(double * Fx, double * Fy, double * Fz, double * FGradMag, double * Nx, double * Ny, double * Nz, double * Fxx, double * Fyy, double * Fzz, double * Fxy, double * Fyz, double * Fzx, double * FLaplacian, double * MeanCurvature, double * GaussianCurvature, double * Heaviside, double * DiracDelta, double const * lsf, double const * HPrimal, int rows, int cols, int pges, double dx, double dy, double dz, double ds, int num_ele)
 {
 	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
 	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
@@ -19,14 +19,14 @@ void set_calculus_toolbox(double * Fx, double * Fy, double * Fz, double * FGradM
 
 	int ind = sub2ind(row_idx, col_idx, pge_idx, rows, cols, pges);
 
-	int right 	= sub2ind(row_idx, col_idx+1, pge_idx, rows, cols, pges);
-	int left 	= sub2ind(row_idx, col_idx-1, pge_idx, rows, cols, pges);
+	int right	= sub2ind(row_idx, col_idx+1, pge_idx, rows, cols, pges);
+	int left	= sub2ind(row_idx, col_idx-1, pge_idx, rows, cols, pges);
 
-	int front 	= sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);	
-	int back 	= sub2ind(row_idx-1, col_idx, pge_idx, rows, cols, pges);
+	int front	= sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);	
+	int back	= sub2ind(row_idx-1, col_idx, pge_idx, rows, cols, pges);
 
-	int up 		= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);	
-	int down 	= sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
+	int up		= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);	
+	int down	= sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
 
 	double fx = (lsf[right] - lsf[left]) / (2*dx);
 	double fy = (lsf[front] - lsf[back]) / (2*dy);
@@ -44,19 +44,19 @@ void set_calculus_toolbox(double * Fx, double * Fy, double * Fz, double * FGradM
 	Nz[ind] = fz / fGradMag;
 
 	int front_right = sub2ind(row_idx+1, col_idx+1, pge_idx, rows, cols, pges);
-	int back_left 	= sub2ind(row_idx-1, col_idx-1, pge_idx, rows, cols, pges);
-	int back_right 	= sub2ind(row_idx-1, col_idx+1, pge_idx, rows, cols, pges);
-	int front_left 	= sub2ind(row_idx+1, col_idx-1, pge_idx, rows, cols, pges);
+	int back_left	= sub2ind(row_idx-1, col_idx-1, pge_idx, rows, cols, pges);
+	int back_right	= sub2ind(row_idx-1, col_idx+1, pge_idx, rows, cols, pges);
+	int front_left	= sub2ind(row_idx+1, col_idx-1, pge_idx, rows, cols, pges);
 
-	int front_up 	= sub2ind(row_idx+1, col_idx, pge_idx+1, rows, cols, pges);
-	int back_down 	= sub2ind(row_idx-1, col_idx, pge_idx-1, rows, cols, pges);
-	int front_down 	= sub2ind(row_idx+1, col_idx, pge_idx-1, rows, cols, pges);
-	int back_up 	= sub2ind(row_idx-1, col_idx, pge_idx+1, rows, cols, pges);
+	int front_up	= sub2ind(row_idx+1, col_idx, pge_idx+1, rows, cols, pges);
+	int back_down	= sub2ind(row_idx-1, col_idx, pge_idx-1, rows, cols, pges);
+	int front_down	= sub2ind(row_idx+1, col_idx, pge_idx-1, rows, cols, pges);
+	int back_up		= sub2ind(row_idx-1, col_idx, pge_idx+1, rows, cols, pges);
 
-	int right_up 	= sub2ind(row_idx, col_idx+1, pge_idx+1, rows, cols, pges);
-	int left_down 	= sub2ind(row_idx, col_idx-1, pge_idx-1, rows, cols, pges);
-	int right_down 	= sub2ind(row_idx, col_idx+1, pge_idx-1, rows, cols, pges);
-	int left_up 	= sub2ind(row_idx, col_idx-1, pge_idx+1, rows, cols, pges);
+	int right_up	= sub2ind(row_idx, col_idx+1, pge_idx+1, rows, cols, pges);
+	int left_down	= sub2ind(row_idx, col_idx-1, pge_idx-1, rows, cols, pges);
+	int right_down	= sub2ind(row_idx, col_idx+1, pge_idx-1, rows, cols, pges);
+	int left_up		= sub2ind(row_idx, col_idx-1, pge_idx+1, rows, cols, pges);
 
 	double fxx = (lsf[right] - 2*lsf[ind] + lsf[left]) / (dx*dx);
 	double fyy = (lsf[front] - 2*lsf[ind] + lsf[back]) / (dy*dy);
