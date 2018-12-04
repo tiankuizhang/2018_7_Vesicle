@@ -9,6 +9,23 @@ function setCalculusToolBox(obj)
 	obj.Ny = obj.Fy ./ obj.FGradMag;
 	obj.Nz = obj.Fz ./ obj.FGradMag;
 
+	% calculate the extend velocity upwindly
+	%obj.Fx = zeros(obj.GD3.Size, 'gpuArray');
+	%obj.Fy = zeros(obj.GD3.Size, 'gpuArray');
+	%obj.Fz = zeros(obj.GD3.Size, 'gpuArray');
+	%
+	%[obj.Fx, obj.Fy, obj.Fz] = feval(obj.WENO5RK3_upwind_normal, ...
+	%		obj.Fx, obj.Fy, obj.Fz, obj.F, ...
+	%		obj.xpr, obj.xpl, obj.ypf, obj.ypb, obj.zpu, obj.zpd, ...
+	%		obj.GD3.mrows, obj.GD3.ncols, obj.GD3.lshts, ...
+	%		obj.GD3.Dx, obj.GD3.Dy, obj.GD3.Dz, obj.GD3.NumElt);	
+	%
+	%obj.FGradMag = max(sqrt(obj.Fx.^2+obj.Fy.^2+obj.Fz.^2), 1e-6);
+	%
+	%obj.Fx = obj.Fx ./ obj.FGradMag;
+	%obj.Fy = obj.Fy ./ obj.FGradMag;
+	%obj.Fz = obj.Fz ./ obj.FGradMag;
+
 	[obj.Fxx,obj.Fyy,obj.Fzz,obj.Fxy,obj.Fyz,obj.Fzx] = obj.GD3.Hessian(obj.F);
 	obj.FLaplacian = obj.GD3.Laplacian(obj.F);
 

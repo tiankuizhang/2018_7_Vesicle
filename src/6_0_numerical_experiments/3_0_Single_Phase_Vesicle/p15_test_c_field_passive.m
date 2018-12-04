@@ -1,6 +1,4 @@
-% simulate single phase vesicle without imcompressibility
-% using high order schemes 
-% it seems that directly using a larger stencil will not give the correct dynamics
+% simulate single phase vesicle and measuring local area change 
 
 % create the initial distance map
 %[x,y,z,f] = SD.Shape.Ellipsoid([128,128,64],0.65,"o");
