@@ -18,28 +18,22 @@ fprintf('initial area: %4.5f, initial volume: %4.5f, reduced volume: %4.5f\n', .
 
 % name and size of figure
 FIG = figure('Name','Single Phase Vesicle','Position',[10 10 1600 800])
-%FIG = figure('Name','Single Phase Vesicle','Position',[10 10 800 400])
 
 % position to show iteration number and accumulated time
 textX = gather(map.GD3.xmin);
 textY = gather( (map.GD3.ymax + map.GD3.ymin)/2 );
 textZ = gather(map.GD3.zmax);
 
-MaxResolvedCurvature = 2.0 / map.GD3.Ds;
-
 % bending mudulus
 Kappa = 1.0;
 CFLNumber = 0.1;
 filterWidth = gather(map.GD3.Ds)*5.0;
+localArea = ones(map.GD3.Size,'gpuArray'); % measurement of local compression and stretch
 
 % dynamics
 time = 0;%
 for i = 1:100
 	map.GPUsetCalculusToolBox
-	%map.setCalculusToolBox
-	map.setCalculusToolBoxGA(0.001)
-	%map.setCalculusToolBox4
-	%map.setCalculusToolBoxWENO
 	CurrentArea = map.calArea;
 	DiffArea = 100 * (CurrentArea - InitialArea)/InitialArea;
 	CurrentVolume = map.calVolume;
@@ -48,34 +42,19 @@ for i = 1:100
 
 
 	% extend mean curvature away from surface
-	mask = abs(map.F)<2*map.GD3.Ds;
-	%map.MeanCurvature = sign(map.MeanCurvature) .* ...
-	%	min(MaxResolvedCurvature, abs(map.MeanCurvature));
-	%MaxCurvatureBeforeExtend = max(abs(map.MeanCurvature(mask)));
-	
-	%MeanCurvature = map.ENORK2Extend(map.MeanCurvature,100);
 	MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);
-	%MeanCurvature = map.WENO5RK3Extend(map.MeanCurvature,100);
-	%MaxCurvature = max(abs(MeanCurvature(mask)));
 	
 	% surface Laplacian of mean curvature and numerical Hamiltonian
-	%MeanCurvatureSurfaceLaplacian = map.SurfaceLaplacian(MeanCurvature); % will lead to grid anisosymmetry 
 	MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(MeanCurvature); 
 	NormalSpeedBend = Kappa * (MeanCurvatureSurfaceLaplacian + 0.5 * MeanCurvature .* ...
 			(MeanCurvature.^2 - 4 * map.GaussianCurvature) );
-	%NormalSpeedBend = map.WENO5RK3Extend(NormalSpeedBend, 100);
 	NormalSpeedBend = map.ENORK2Extend(NormalSpeedBend, 100);
-	%NormalSpeedBend = imgaussfilt3(NormalSpeedBend, filterWidth);
-	%NormalSpeedBend = map.WENORK3Extend(NormalSpeedBend, 50);
-	%NormalSpeedBend = map.ENORK2Extend(NormalSpeedBend, 100);
 
+	mask = abs(map.F)<2*map.GD3.Ds;
 	MaxSpeedBend = max(abs(NormalSpeedBend(mask)));
 
 	Dt = CFLNumber * map.GD3.Ds / MaxSpeedBend;
-	%Dt = 5e-6;
 	time = time + Dt;
-
-	%keyboard
 
 	% now solve for tension and pressure to enfore total area and volume
 	c11 = map.surfaceIntegral(MeanCurvature.^2); % surface integral of mean curvature squared
@@ -91,20 +70,28 @@ for i = 1:100
 	Tension = TP(1);
 	Pressure = TP(2);
 
-	% %5d is important to avoid mess in ssh matlab sesssion 
-	fprintf('iter: %5d, ene: %4.5f, ar: %4.5f, vol: %4.5f, rd: %4.5f\n', ...
-			i, c11, DiffArea, DiffVolume, ReduceVolume)
 	% now calculate normal Speed
-	normalSpeed = (Tension * MeanCurvature - NormalSpeedBend + Pressure) .* map.FGradMag;
-	%normalSpeed = map.WENORK3Extend(normalSpeed, 100);
-	normalSpeedSmoothed = smoothGMRES(map, normalSpeed, Dt, 0.5);
-	%normalSpeedSmoothed = imgaussfilt3(normalSpeedSmoothed, filterWidth);
-	%normalSpeedSmoothed = map.WENO5RK3Extend(normalSpeedSmoothed, 100);
-	normalSpeedSmoothed = map.ENORK2Extend(normalSpeedSmoothed, 100);
+	normalSpeed = Tension * MeanCurvature - NormalSpeedBend + Pressure;
 
+	% time step c field with first order Euler scheme
+	TotalC = map.surfaceIntegral(localArea);
+	DiffC = 100 * (TotalC - InitialArea) / InitialArea;
+	localArea = localArea .* ( 1.0 + Dt * MeanCurvature .* normalSpeed);
+	localArea = map.WENO5RK3Extend(localArea, 100);
+
+	% time step level set function
+	normalSpeedSmoothed = smoothGMRES(map, normalSpeed.*map.FGradMag, Dt, 0.5);
+	normalSpeedSmoothed = map.ENORK2Extend(normalSpeedSmoothed, 100);
 	map.F = map.F - Dt * normalSpeedSmoothed;
-	%map.F = map.F - Dt * normalSpeed;
 	map.setDistance
+
+	% extend local Area field away from the new surface position
+	localArea = map.WENO5RK3Extend(localArea, 100);
+
+	% %5d is important to avoid mess in ssh matlab sesssion 
+	%fprintf('iter: %5d, ene: %4.5f, ar: %4.5f, vol: %4.5f, rd: %4.5f\n', ...
+	%		i, c11, DiffArea, DiffVolume, ReduceVolume)
+	fprintf('iter: %5d, ene: %4.5f, DiffC: %4.5f\n', i, c11, DiffC)
 
 	if mod(i,10)==0 
 		timeStr = [sprintf('%04d: %0.5e, %0.5f', i,time,c11)];
@@ -112,7 +99,8 @@ for i = 1:100
 		clf(FIG)
 
 		%map.plotSurface(0,1,'Green','black');textZ = gather(map.GD3.zmin);
-		map.plotField(0,normalSpeedSmoothed)
+		%map.plotField(0,normalSpeedSmoothed,0.5)
+		map.plotField(0,localArea,0.5)
 		ax = gca;
 		ax.Visible = 'off';
 		th=text(textX, textY, textZ, timeStr, 'Color', 'y', 'FontSize', 14);
@@ -127,7 +115,7 @@ for i = 1:100
 		end
 	end
 
-	if mod(i,1)==0
+	if mod(i,10)==0
 		%map.F = map.ENORK2Reinitialization(map.F,100);
 		map.F = map.WENO5RK3Reinitialization(map.F,200);
 	end
