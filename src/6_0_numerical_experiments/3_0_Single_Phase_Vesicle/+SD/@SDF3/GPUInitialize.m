@@ -151,6 +151,12 @@ function GPUInitialize(obj)
 	obj.ga_set_calculus_toolbox.ThreadBlockSize = obj.ThreadBlockSize;
 	obj.ga_set_calculus_toolbox.GridSize = obj.GridSize;
 
+	obj.advection_step = parallel.gpu.CUDAKernel('CUDA_Code/4_0_Calculus_ToolBox/advection_step.ptx', ...
+												 'CUDA_Code/4_0_Calculus_ToolBox/advection_step.cu', ...
+												 'advection_step');
+	obj.advection_step.ThreadBlockSize = obj.ThreadBlockSize;
+	obj.advection_step.GridSize = obj.GridSize;
+
 	% functions used for calculating weno derivatives
 	[status, cmdout] = system('make -C CUDA_Code/5_0_Nonoscillating_Reconstruction');
 	if status, error(cmdout), end % if compilation failed, throw and output error message

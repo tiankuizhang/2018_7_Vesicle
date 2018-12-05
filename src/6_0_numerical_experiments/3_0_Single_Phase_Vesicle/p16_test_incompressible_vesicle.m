@@ -72,21 +72,24 @@ for i = 1:100
 	Tension = TP(1);
 	Pressure = TP(2);
 
-	% now calculate normal Speed
+	% now calculate normal Speed that preserves total area and volume
 	normalSpeed = Tension * map.MeanCurvature - NormalSpeedBend + Pressure;
 
 	% calculate local tension
-	localTension = localLagrangeMultiplier(map, normalSpeed, localArea, Dt, c11/c22); 
+	[localTension,residual] = localLagrangeMultiplier(map, normalSpeed, localArea, Dt, c11/c22); 
 	%localTension = localLagrangeMultiplierCPU(map, normalSpeed, localArea, Dt, c11/c22); 
 	localTension = map.WENO5RK3Extend(localTension, 100);
+	residual = map.WENO5RK3Extend(residual, 100);
 
 	% time step c field with first order Euler scheme
 	TotalC = map.surfaceIntegral(localArea);
 	DiffC = 100 * (TotalC - InitialArea) / InitialArea;
-	localArea = localArea .* ( 1.0 + Dt * map.MeanCurvature .* normalSpeed);
+	%localArea = localArea .* ( 1.0 + Dt * map.MeanCurvature .* normalSpeed);
+	localArea = timeStepLocalArea(map, localArea, localTension, residual, Dt, 0.5);
 	localArea = map.WENO5RK3Extend(localArea, 100);
 
 	% time step level set function
+	normalSpeed = normalSpeed + localTension .* map.MeanCurvature;
 	normalSpeedSmoothed = smoothGMRES(map, normalSpeed.*map.FGradMag, Dt, 0.5);
 	normalSpeedSmoothed = map.ENORK2Extend(normalSpeedSmoothed, 100);
 	map.F = map.F - Dt * normalSpeedSmoothed;
@@ -100,15 +103,15 @@ for i = 1:100
 	%		i, c11, DiffArea, DiffVolume, ReduceVolume)
 	fprintf('iter: %5d, ene: %4.5f, DiffC: %4.5f\n', i, c11, DiffC)
 
-	if mod(i,1)==pi 
+	if mod(i,1)==0 
 		timeStr = [sprintf('%04d: %0.5e, %0.5f', i,time,c11)];
 
 		clf(FIG)
 
 		%map.plotSurface(0,1,'Green','black');textZ = gather(map.GD3.zmin);
 		%map.plotField(0,normalSpeedSmoothed,0.5)
-		%map.plotField(0,localArea,0.5)
-		map.plotField(0,localTension,0.5)
+		map.plotField(0,localArea,0.5)
+		%map.plotField(0,localTension,0.5)
 		ax = gca;
 		ax.Visible = 'off';
 		th=text(textX, textY, textZ, timeStr, 'Color', 'y', 'FontSize', 14);
@@ -155,7 +158,7 @@ function normalSpeedSmoothed = smoothGMRES(map, NormalSpeed, Dt, Alpha)
 end
 
 % calculate local Lagrange multiplier
-function localTension = localLagrangeMultiplier(map, normalSpeed, localArea, Dt, Alpha)
+function [localTension,residual] = localLagrangeMultiplier(map, normalSpeed, localArea, Dt, Alpha)
 
 	% operator to be solved
 	Op = map.GD3.Lxx + map.GD3.Lyy + map.GD3.Lzz - ...
@@ -173,8 +176,11 @@ function localTension = localLagrangeMultiplier(map, normalSpeed, localArea, Dt,
 
 	% it seems that restart about {10,...,15} gives best speed
 	[localTension,~,~,~,~] = gmres(Op, S, 11, 1e-6, 300, @mfun);
+	residual = Op * localTension - S;
+
 	%localTension = gmres(Op, S, 10, 1e-13, 300, @mfun);
 	localTension = reshape(localTension, map.GD3.Size);
+	residual = reshape(residual, map.GD3.Size);
 
 	% preconditioner, Alpha = c11/c22 as the mean squared MeanCurvature
 	function y = mfun(S)
@@ -219,7 +225,25 @@ function localTension = localLagrangeMultiplierCPU(map, normalSpeed, localArea, 
 
 end
 
+% time step c field
+function NewC = timeStepLocalArea(map, localArea, localTension, residual, Dt, Alpha)
 
+	Advection = zeros(map.GD3.Size, 'gpuArray');
+	[vx,vy,vz] = map.GD3.Gradient(localTension);
+	Advection = feval(map.advection_step,Advection,vx,vy,vz,localArea,...
+			map.GD3.mrows,map.GD3.ncols,map.GD3.lshts,...
+			map.GD3.Dx,map.GD3.Dy,map.GD3.Dz);
+
+	rhs = 1.0 - Dt*(Alpha * map.GD3.Laplacian(localArea) + Advection + residual.* localArea);
+
+	% now use fft to solve for newC
+	fftS = fftn(rhs);
+	fftS = fftS ./ (1.0 + Alpha * Dt * ...
+			(map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2) );
+	NewC = real(ifftn(fftS));
+
+
+end
 
 
 

@@ -222,6 +222,7 @@ classdef SDF3 < handle
 			auxi_set_calculus_toolbox % set Ax,Ay ...
 			upwind_derivative % calculate gradient of some field
 			ga_set_calculus_toolbox % geometry aware version of set_calculus_toolbox
+			advection_step % calculate advection term upwindly with WENO scheme
 
 		% kernel function for numerical Hamiltonian for surface consevation law
 			surface_conservation_step
