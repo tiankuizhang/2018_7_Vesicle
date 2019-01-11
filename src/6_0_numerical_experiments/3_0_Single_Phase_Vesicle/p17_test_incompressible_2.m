@@ -1,9 +1,10 @@
 % simulate single phase vesicle and measuring local area change 
-% and calculate local tension and impose incompressibility
+% impose incompressibility and calculate tension and pressure
 
 % create the initial distance map
 %[x,y,z,f] = SD.Shape.Ellipsoid([128,128,64],0.65,"o");
-[x,y,z,f] = SD.Shape.Ellipsoid([64,64,32],0.65,"o");
+%[x,y,z,f] = SD.Shape.Ellipsoid([64,64,32],0.65,"o");
+[x,y,z,f] = SD.Shape.Ellipsoid([64,64,128],0.65,"p");
 grid = SD.GD3(x,y,z);
 map = SD.SDF3(grid,x,y,z,f);
 map.setDistance
@@ -18,7 +19,7 @@ fprintf('initial area: %4.5f, initial volume: %4.5f, reduced volume: %4.5f\n', .
 		InitialArea, InitialVolume, ReduceVolume)
 
 % name and size of figure
-%FIG = figure('Name','Single Phase Vesicle','Position',[10 10 1600 800])
+FIG = figure('Name','Single Phase Vesicle','Position',[10 10 1600 800])
 
 % position to show iteration number and accumulated time
 textX = gather(map.GD3.xmin);
@@ -57,42 +58,43 @@ for i = 1:100
 	Dt = CFLNumber * map.GD3.Ds / MaxSpeedBend;
 	time = time + Dt;
 
-	% now solve for tension and pressure to enfore total area and volume
+	% now solve for local tension and tension and pressure to enfore total area and volume
 	c11 = map.surfaceIntegral(map.MeanCurvature.^2); % energy
 	c12 = map.surfaceIntegral(map.MeanCurvature); % surface integral of mean curvature
 	c21 = c12;
 	c22 = InitialArea;
+	
+	% calculate local tension
+	[localTension,residual] = localLagrangeMultiplier(map, -NormalSpeedBend, localArea, Dt, c11/c22); 
+	%localTension = localLagrangeMultiplierCPU(map, normalSpeed, localArea, Dt, c11/c22); 
+	localTension = map.WENO5RK3Extend(localTension, 100);
+	residual = map.WENO5RK3Extend(residual, 100);
 
-
+	% calculate tension and pressure
+	normalSpeed = NormalSpeedBend - map.MeanCurvature .* localTension;
 	%s1 = - map.surfaceIntegral(map.MeanCurvature .* NormalSpeedBend) ...
-	s1 =  map.surfaceIntegral(map.MeanCurvature .* NormalSpeedBend) ...
+	s1 =  map.surfaceIntegral(map.MeanCurvature .* normalSpeed ) ...
 		 - (InitialArea - CurrentArea) / Dt;
-	s2 = map.surfaceIntegral(NormalSpeedBend) + (InitialVolume - CurrentVolume) / Dt;
+	s2 = map.surfaceIntegral(normalSpeed) + (InitialVolume - CurrentVolume) / Dt;
 	
 	TP = [c11,c12;c21,c22]\[s1;s2];
 	Tension = TP(1);
 	Pressure = TP(2);
 
 	% now calculate normal Speed that preserves total area and volume
-	normalSpeed = Tension * map.MeanCurvature - NormalSpeedBend + Pressure;
-
-	% calculate local tension
-	[localTension,residual] = localLagrangeMultiplier(map, normalSpeed, localArea, Dt, c11/c22); 
-	%localTension = localLagrangeMultiplierCPU(map, normalSpeed, localArea, Dt, c11/c22); 
-	localTension = map.WENO5RK3Extend(localTension, 100);
-	residual = map.WENO5RK3Extend(residual, 100);
+	normalSpeed = Tension * map.MeanCurvature - normalSpeed + Pressure;
 
 	% time step c field with first order Euler scheme
 	TotalC = map.surfaceIntegral(localArea);
 	%DiffC = 100 * (TotalC - InitialArea) / InitialArea;
 	DiffC = 100 * (TotalC - CurrentArea) / InitialArea;
+	residual = residual - map.MeanCurvature .* (map.MeanCurvature .* Tension + Pressure);
 	%localArea = localArea .* ( 1.0 + Dt * map.MeanCurvature .* normalSpeed);
 	localArea = timeStepLocalArea(map, localArea, localTension, residual, Dt, 0.5);
 	localArea = map.WENO5RK3Extend(localArea, 100);
 
 	% time step level set function
 	% addtion of localTnesion causes total area and volume to change
-	normalSpeed = normalSpeed + localTension .* map.MeanCurvature;
 	normalSpeedSmoothed = smoothGMRES(map, normalSpeed.*map.FGradMag, Dt, 0.5);
 	normalSpeedSmoothed = map.ENORK2Extend(normalSpeedSmoothed, 100);
 	map.F = map.F - Dt * normalSpeedSmoothed;

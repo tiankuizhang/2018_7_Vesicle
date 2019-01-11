@@ -2,7 +2,8 @@
 
 % create the initial distance map
 %[x,y,z,f] = SD.Shape.Ellipsoid([128,128,64],0.65,"o");
-[x,y,z,f] = SD.Shape.Ellipsoid([64,64,32],0.65,"o");
+%[x,y,z,f] = SD.Shape.Ellipsoid([64,64,32],0.65,"o");
+[x,y,z,f] = SD.Shape.Ellipsoid([64,64,128],0.65,"p");
 grid = SD.GD3(x,y,z);
 map = SD.SDF3(grid,x,y,z,f);
 map.setDistance
@@ -93,7 +94,7 @@ for i = 1:100
 	%		i, c11, DiffArea, DiffVolume, ReduceVolume)
 	fprintf('iter: %5d, ene: %4.5f, DiffC: %4.5f\n', i, c11, DiffC)
 
-	if mod(i,10)==0 
+	if mod(i,10)==pi 
 		timeStr = [sprintf('%04d: %0.5e, %0.5f', i,time,c11)];
 
 		clf(FIG)
