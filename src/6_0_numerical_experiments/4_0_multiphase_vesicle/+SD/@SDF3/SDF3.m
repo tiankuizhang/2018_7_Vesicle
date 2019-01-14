@@ -247,6 +247,9 @@ classdef SDF3 < handle
 		NewC = ENORK2Extend(obj, C, iteration)
 		NewC = WENORK3Extend(obj, C, iteration)
 		NewC = WENO5RK3Extend(obj, C, iteration)
+		
+		% extend C field away for surface of auxilary level set
+		NewC = AENORK2Extend(obj, C, iter1, iter2, iter3)
 
 		% surface redistance schemes of various orders of accuracy
 		NewA = ENORK2ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
@@ -347,7 +350,8 @@ classdef SDF3 < handle
 		function plotIsoField(obj, iso, field, PlotSurface)
 			[faces,verts,colors] = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,obj.F,0,field);
 			if PlotSurface
-				obj.plotSurface(0,1,'Green',1);
+				%obj.plotSurface(0,1,'Green','Black');
+				obj.plotField(0,obj.AHeaviside,0.01)
 			end
 			[x,y,z] = obj.CrossingLine(0,field,faces,verts,colors);
 			line(x(:),y(:),z(:),'Color','red','LineWidth',3);
