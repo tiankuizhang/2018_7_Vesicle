@@ -377,4 +377,23 @@ classdef GD3 < handle
 		[WENO_back_x, WENO_fore_x, WENO_back_y, WENO_fore_y, WENO_back_z, WENO_fore_z] = GPUWENODerivative(obj, Field);
 	end
 
+	methods
+		function DrawBox(obj)
+			hold on
+			line([obj.xmin,obj.xmax,obj.xmax,obj.xmin,obj.xmin],...
+				 [obj.ymin,obj.ymin,obj.ymax,obj.ymax,obj.ymin],...
+				 [obj.zmin,obj.zmin,obj.zmin,obj.zmin,obj.zmin],...
+				 'Color','k');
+			line([obj.xmin,obj.xmax,obj.xmax,obj.xmin,obj.xmin],...
+				 [obj.ymin,obj.ymin,obj.ymax,obj.ymax,obj.ymin],...
+				 [obj.zmax,obj.zmax,obj.zmax,obj.zmax,obj.zmax], ...
+				 'Color','k');
+			line([obj.xmin,obj.xmin],[obj.ymin,obj.ymin],[obj.zmin,obj.zmax],'Color','k')
+			line([obj.xmin,obj.xmin],[obj.ymax,obj.ymax],[obj.zmin,obj.zmax],'Color','k')
+			line([obj.xmax,obj.xmax],[obj.ymin,obj.ymin],[obj.zmin,obj.zmax],'Color','k')
+			line([obj.xmax,obj.xmax],[obj.ymax,obj.ymax],[obj.zmin,obj.zmax],'Color','k')
+			hold off
+		end
+	end
+
 end

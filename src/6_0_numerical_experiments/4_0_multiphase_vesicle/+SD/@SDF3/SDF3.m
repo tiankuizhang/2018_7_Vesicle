@@ -173,6 +173,14 @@ classdef SDF3 < handle
 			mask = abs(obj.F) < 2*obj.GD3.Ds & abs(obj.A) < 2*obj.GD3.Ds;
 			val = sum(field(mask).*obj.AFDiracDelta(mask).*obj.NormCrossAF(mask)) * obj.GD3.Ds.^3;
 		end
+		function area = AcalArea(obj)
+			mask = abs(obj.F) < 2*obj.GD3.Ds;
+			area = sum( obj.DiracDelta(mask).*(1-obj.AHeaviside(mask)) ) * obj.GD3.Ds.^3;
+		end
+		function integral = AsurfaceIntegral(obj,field)
+			mask = abs(obj.F) < 2*obj.GD3.Ds;
+			integral = sum(field(mask).*obj.DiracDelta(mask).*obj.FGradMag(mask).*(1-obj.AHeaviside(mask)))*obj.GD3.Ds.^3;
+		end
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
