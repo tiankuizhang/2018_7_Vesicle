@@ -1,25 +1,27 @@
 % simulate a two phase vesicle conserving total area, volume and area of a particular phase
 % incomprssibility is not imposed right now
+% A is enforced to have its zero level set perpendicular of surface of F
+% A is also enforced to be a signed distance function
 
+% 0.9, 0.65
+% 0.95, 0.70
 
-rd = 0.90; ra = 0.60;
-GridSize = [64,64,64];
-%type = "o" % choose c
-type = "p" % choose a
-KappaL = 60; % isotropic line tension
-iter = 3000;
+%rd = 0.70, ra = 0.;
+rd = 0.90, ra = 0.65;
+%rd = 0.95, ra = 0.70;
 
-%[x,y,z,f,a,b,c] = SD.Shape.Ellipsoid([96,96,96],0.98,"p");
-[x,y,z,f,a,b,c] = SD.Shape.Ellipsoid(GridSize,rd,type);
+[x,y,z,f,a,b,c] = SD.Shape.Ellipsoid([64,64,128],rd,"p");
+%[x,y,z,f,a,b,c] = SD.Shape.Ellipsoid([64,64,64],rd,"p");
 fprintf('a:%4.5f, b:%4.5f, c:%4.5f\n',a,b,c)
 Grid = SD.GD3(x,y,z);
 map = SD.SDF3(Grid,x,y,z,f);
-%map.A = z - ra*c;
 map.A = z - ra*a;
 
 map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,100);
-map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
+map.A = map.WENORK3Extend(map.A,100);
+map.A = map.WENORK3Reinitialization(map.A,100);
+%map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
 %map.A = map.WENORK3ClosetPointSurfaceRedistance(map.A,100,50);
 
 map.GPUsetCalculusToolBox
@@ -39,21 +41,21 @@ iso = gather(-20*map.GD3.Ds:4*map.GD3.Ds:20*map.GD3.Ds);
 textX = gather(map.GD3.xmin);
 %textY = gather( (map.GD3.ymax + map.GD3.ymin)/2 );
 textY = gather( map.GD3.ymin );
-textZ = gather(map.GD3.zmin);
+%textZ = gather(map.GD3.zmin);
+textZ = gather(map.GD3.zmax);
 
 % bending mudulus
 KappaB = 1.0; % bending rigidity
-CFLNumber = 1;
+KappaL = 30; % isotropic line tension
+CFLNumber = 0.05;
 filterWidth = gather(map.GD3.Ds)*5.0;
 
 % dynamics
+iter = 3000;
 time = 0;
 array_t = [];
 array_eb = [];
 array_el = [];
-
-z_cen = map.surfaceIntegral(map.GD3.Z);
-z_shift = - floor(z_cen / map.GD3.Dz);
 
 for i = 1:iter
 	%KappaL = i;
@@ -74,19 +76,12 @@ for i = 1:iter
 	% surface Laplacian of mean curvature and numerical Hamiltonian
 	MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(map.MeanCurvature); 
 	NormalSpeedBend = KappaB * (MeanCurvatureSurfaceLaplacian + ...
-	 0.5 * map.MeanCurvature .* (map.MeanCurvature.^2 - 4 * map.GaussianCurvature) );
+	 0.5 * map.MeanCurvature .* (map.MeanCurvature.^2 - 4 * map.GaussianCurvature) ) ...
+	 - KappaL * map.NormalCurvature .* map.ADiracDelta .* map.AGradMag ;
 	NormalSpeedBend = map.ENORK2Extend(NormalSpeedBend, 100);
-
-	%mask = abs(map.F)<2*map.GD3.Ds;
-	%MaxSpeedBend = max(abs(NormalSpeedBend(mask)));
-
-	NormalCurvature = map.ENORK2Extend(map.NormalCurvature, 100);
-	NormalSpeedBend = NormalSpeedBend ...
-	 - KappaL * NormalCurvature .* map.ADiracDelta .* map.AGradMag ;
 
 	mask = abs(map.F)<2*map.GD3.Ds;
 	MaxSpeedBend = max(abs(NormalSpeedBend(mask)));
-	%MaxSpeedBend = max( max(abs(NormalSpeedBend(mask))), 10*MaxSpeedBend );
 
 	Dt = CFLNumber * map.GD3.Ds / MaxSpeedBend;
 	time = time + Dt;
@@ -110,13 +105,14 @@ for i = 1:iter
 	normalSpeed = Tension * MeanCurvature - NormalSpeedBend + Pressure;
 
 	% time step level set function
-	normalSpeedSmoothed = smoothFFT(map, normalSpeed.*map.FGradMag, Dt, 0.5*KappaB);
+	normalSpeedSmoothed = smoothFFT(map, normalSpeed.*map.FGradMag, Dt, 0.5);
 	%normalSpeedSmoothed = smoothGMRES(map, normalSpeed.*map.FGradMag, Dt, 0.5);
 	normalSpeedSmoothed = map.ENORK2Extend(normalSpeedSmoothed, 100);
 
 	%% time step the auxilary level set function
 	% determine the Lagrange multiplier that conserves phase area
-	GeodesicCurvature = map.AENORK2Extend(map.GeodesicCurvature, 50, 100, 50);
+	GeodesicCurvature = map.ANENORK2Extend(map.GeodesicCurvature, 50, 100, 50);
+	%GeodesicCurvature = map.ANENORK2Extend(map.GeodesicCurvature, 50, 100, 0);
 	PhaseLength = map.calLength;
 	PhaseChange = (InitialPhaseArea - CurrentPhaseArea) / Dt + ...
 		map.AsurfaceIntegral(MeanCurvature .* normalSpeedSmoothed) - ...
@@ -125,38 +121,33 @@ for i = 1:iter
 
 	AnormalSpeed = KappaL * GeodesicCurvature - LineTension;
 
-	%AnormalSpeed = smoothFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
-	AnormalSpeed = smoothDiffusionFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
+	AnormalSpeed = smoothFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
 	%AnormalSpeed = smoothGMRES(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
 
 	% timestep level set function
 	map.F = map.F - Dt * normalSpeedSmoothed;
 	map.setDistance
+
 	map.A = map.A - Dt * AnormalSpeed;
-	%map.A = map.WENORK3Extend(map.A, 50);
+	%map.A = map.WENORK3Extend(map.A, 100);
 	%map.A = map.WENORK3Reinitialization(map.A, 100);
-	map.A = map.WENORK3Extend(map.A, 50);
+
 
 	ene_b = KappaB * c11;
 	ene_l = KappaL * PhaseLength;
 	ene = ene_b + ene_l;
+	fprintf('iter: %5d, b: %4.5f, l: %4.5f, ene: %4.5f, ar: %+4.5f, vol: %+4.5f, rd: %4.5f, pe: %+4.5f\n', i, ene_b, ene_l, ene, DiffArea, DiffVolume, ReduceVolume, DiffPhaseArea)
 
 	array_t = [array_t time];
 	array_eb = [array_eb; ene_b];
 	array_el = [array_el; ene_l];
-
-	fprintf('iter: %5d, ene: %4.5f, ar: %+4.5f, vol: %+4.5f, rd: %4.5f, pe: %+4.5f\n', ...
-			i, ene, DiffArea, DiffVolume, ReduceVolume, DiffPhaseArea)
-	
 
 	if mod(i,20)==0
 		timeStr = [sprintf('%04d: %0.5e, %0.5f', i,time,ene)];
 
 		clf(FIG)
 
-		subplot(2,2,[1,3])
-		titlestr = [ 'type:' + type + sprintf( ' rd:%.2f,ra:%.2f,kl:%.2f,gr:(%d,%d,%d),\n zcen:%.2f, zshift: %d', rd,ra,KappaL,GridSize(1),GridSize(2),GridSize(3),z_cen,z_shift ) ];
-		title(titlestr)
+		subplot(1,2,1)
 		%map.plotSurface(0,1,'Green','black');textZ = gather(map.GD3.zmin);
 		%map.plotField(0,normalSpeedSmoothed,0.5)
 		map.plotField(0,map.AHeaviside,0.01)
@@ -172,22 +163,8 @@ for i = 1:iter
 
 		zoom(1.0)
 
-		subplot(2,2,4)
+		subplot(1,2,2)
 		area(array_t, [array_eb array_el])
-		
-		subplot(2,2,2)
-		xslice = ceil(map.GD3.ncols / 2);
-		Fslice = reshape(map.F(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
-		Aslice = reshape(map.A(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
-		Y = reshape(map.GD3.Y(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
-		Z = reshape(map.GD3.Z(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
-		Fpositive = Fslice; Fpositive(Aslice<0) = nan;
-		Fnegative = Fslice; Fnegative(Aslice>0) = nan;
-		contour(Y,Z,Fpositive,[0,0],'red','LineWidth',3)
-		hold on
-		contour(Y,Z,Fnegative,[0,0],'blue','LineWidth',3)
-		hold off
-		axis equal
 
 		drawnow
 
@@ -198,25 +175,11 @@ for i = 1:iter
 	end
 
 	if mod(i,10)==0
-
-		z_cen = map.surfaceIntegral(map.GD3.Z);
-		z_shift = - floor(z_cen / map.GD3.Dz);
-	%	z_shift = sign(z_shift);
-
-		map.F = circshift(map.F, [0,0,sign(z_shift)]);
-		map.setDistance
-		map.F = map.WENO5RK3Reinitialization(map.F,200);
-		%map.GPUsetCalculusToolBox
-
-		map.A = circshift(map.A, [0,0,sign(z_shift)]);
-		map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
-		%map.GPUAsetCalculusToolBox
-
 		%map.F = map.ENORK2Reinitialization(map.F,100);
-		%map.F = map.WENO5RK3Reinitialization(map.F,200);
-		%map.A = map.WENORK3ClosetPointSurfaceRedistance(map.A,20,30);
-		%map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
-		
+		map.F = map.WENO5RK3Reinitialization(map.F,200);
+		map.A = map.WENORK3ClosetPointSurfaceRedistance(map.A,20,30);
+		%map.A = map.WENORK3Extend(map.A, 100);
+		%map.A = map.WENORK3Reinitialization(map.A, 100);
 	end
 
 end
@@ -253,39 +216,6 @@ function normalSpeedSmoothed = smoothFFT(map, NormalSpeed, Dt, Alpha)
 	
 end
 
-
-% solve (Idt - alpha * Dt * Laplacian)^(-1) with GMRES preconditioned by FFT
-function normalSpeedSmoothed = smoothDiffusionGMRES(map, NormalSpeed, Dt, Alpha)
-
-	% operator to be solved
-	Op = map.GD3.Idt - Alpha * Dt * map.GD3.LLaplacian;
-	% reshape RHS into a colum vector
-	S = reshape(NormalSpeed, [map.GD3.NumElt, 1]);
-
-	[normalSpeedSmoothed,~,~,~,~] = gmres(Op, S, [], 1e-12, 300, @mfun);
-	normalSpeedSmoothed = reshape(normalSpeedSmoothed, map.GD3.Size);
-
-	% preconditioner
-	function y = mfun(S)
-		fftS = fftn(reshape(S,map.GD3.Size));
-		fftS = fftS ./ (1 + Alpha * Dt * ...
-				(map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2) );
-		y = real(ifftn(fftS));
-		y = reshape(y, [map.GD3.NumElt, 1]);
-	end
-
-end
-
-
-% solve (Idt - alpha * Dt * Laplacian)^(-1) with GMRES preconditioned by FFT
-function normalSpeedSmoothed = smoothDiffusionFFT(map, NormalSpeed, Dt, Alpha)
-
-	fftS = fftn(NormalSpeed);
-	fftS = fftS ./ (1 + Alpha * Dt * ...
-			(map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2) );
-	normalSpeedSmoothed = real(ifftn(fftS));
-	
-end
 
 
 

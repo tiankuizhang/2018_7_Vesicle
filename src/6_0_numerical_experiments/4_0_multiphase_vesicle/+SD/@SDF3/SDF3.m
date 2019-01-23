@@ -258,6 +258,7 @@ classdef SDF3 < handle
 		
 		% extend C field away for surface of auxilary level set
 		NewC = AENORK2Extend(obj, C, iter1, iter2, iter3)
+		NewC = ANENORK2Extend(obj, C, iter1, iter2, iter3)
 
 		% surface redistance schemes of various orders of accuracy
 		NewA = ENORK2ClosetPointSurfaceRedistance(obj,A,iter1,iter2)

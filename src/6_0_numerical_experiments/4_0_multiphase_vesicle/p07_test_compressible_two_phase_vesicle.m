@@ -1,5 +1,6 @@
-% simulate a two phase vesicle conserving total area, volume and area of a particular phase
+% simulate a two phase vesicle conserving volume and area of different phases
 % incomprssibility is not imposed right now
+% a new scheme to impose constraints used
 
 
 rd = 0.90; ra = 0.60;
