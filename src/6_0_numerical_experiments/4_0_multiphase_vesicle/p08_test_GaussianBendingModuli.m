@@ -1,13 +1,16 @@
 % simulate a two phase vesicle conserving volume and area of different phases
 % incomprssibility is not imposed right now
 % a new scheme to impose constraints used
+% we shall add GaussianBending energy in this script
 
 
-rd = 0.95; ra = 0.80;
+%rd = 0.95; ra = 0.80;
+rd = 0.76; ra = 0.0;
 GridSize = [64,64,64];
-type = "o" % choose c
-%type = "p" % choose a
-KappaL = 10; % isotropic line tension
+%type = "o" % choose c
+type = "p" % choose a
+KappaL = 70; % isotropic line tension
+KappaG = 0; % difference in Gaussian bending rigidity
 iter = 1500;
 
 %[x,y,z,f,a,b,c] = SD.Shape.Ellipsoid([96,96,96],0.98,"p");
@@ -15,8 +18,8 @@ iter = 1500;
 fprintf('a:%4.5f, b:%4.5f, c:%4.5f\n',a,b,c)
 Grid = SD.GD3(x,y,z);
 map = SD.SDF3(Grid,x,y,z,f);
-map.A = z - ra*c;
-%map.A = z - ra*a;
+%map.A = z - ra*c;
+map.A = z - ra*a;
 
 map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,100);
@@ -53,6 +56,7 @@ time = 0;
 array_t = [];
 array_eb = [];
 array_el = [];
+array_eg = [];
 
 z_cen = map.surfaceIntegral(map.GD3.Z);
 z_shift = - floor(z_cen / map.GD3.Dz);
@@ -84,7 +88,9 @@ for i = 1:iter
 	%MaxSpeedBend = max(abs(NormalSpeedBend(mask)));
 
 	NormalCurvature = map.ENORK2Extend(map.NormalCurvature, 100);
-	GeodesicCurvature = map.AENORK2Extend(map.GeodesicCurvature, 50, 100, 50);
+	LineNormalSpeed = KappaL * map.GeodesicCurvature - KappaG * map.GaussianCurvature;
+	LineNormalSpeed = map.AENORK2Extend(LineNormalSpeed, 50, 100, 50);
+
 	NormalSpeedBend = NormalSpeedBend ...
 	 - KappaL * NormalCurvature .* map.ADiracDelta .* map.AGradMag ;
 
@@ -103,14 +109,13 @@ for i = 1:iter
 	c22 = map.AsurfaceIntegral(map.MeanCurvature.^2) - c23;
 	c33 = map.surfaceIntegral(map.MeanCurvature.^2 .* map.AHeaviside) - c23;
 
+	sLine = map.LineIntegral(LineNormalSpeed);
 	s1 = (InitialVolume - CurrentVolume) / Dt + ...
 		map.surfaceIntegral(NormalSpeedBend);
 	s2 = - (AreaNegative - CurrentNegativeArea) / Dt + ...
-		map.AsurfaceIntegral(map.MeanCurvature.*NormalSpeedBend) + ...
-		KappaL * map.LineIntegral(GeodesicCurvature);
+		map.AsurfaceIntegral(map.MeanCurvature.*NormalSpeedBend) + sLine;
 	s3 = - (AreaPositive - CurrentPositiveArea) / Dt + ...
-		map.surfaceIntegral(map.MeanCurvature.*NormalSpeedBend.*map.AHeaviside) - ...
-		KappaL * map.LineIntegral(GeodesicCurvature);
+		map.surfaceIntegral(map.MeanCurvature.*NormalSpeedBend.*map.AHeaviside)-sLine;...
 
 	TP = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
 	Pressure = TP(1);
@@ -127,7 +132,7 @@ for i = 1:iter
 	normalSpeedSmoothed = map.ENORK2Extend(normalSpeedSmoothed, 100);
 
 	%% time step the auxilary level set function
-	AnormalSpeed = KappaL * GeodesicCurvature + TensionPositive - TensionNegative;
+	AnormalSpeed = LineNormalSpeed + TensionPositive - TensionNegative;
 
 	%AnormalSpeed = smoothFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
 	AnormalSpeed = smoothDiffusionFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
@@ -143,11 +148,13 @@ for i = 1:iter
 
 	ene_b = KappaB * (c22 + c33 + 2*c23);
 	ene_l = - KappaL * c23;
-	ene = ene_b + ene_l;
+	ene_g = KappaG * map.LineIntegral(map.GeodesicCurvature);
+	ene = ene_b + ene_l + ene_g;
 
 	array_t = [array_t time];
 	array_eb = [array_eb; ene_b];
 	array_el = [array_el; ene_l];
+	array_eg = [array_eg; ene_g];
 
 	fprintf('iter: %5d, ene: %4.5f, ar: %+4.5f, vol: %+4.5f, rd: %4.5f, pe: %+4.5f\n', ...
 			i, ene, DiffArea, DiffVolume, ReduceVolume, DiffPhaseArea)
@@ -178,7 +185,7 @@ for i = 1:iter
 		zoom(1.0)
 
 		subplot(2,2,4)
-		area(array_t, [array_eb array_el])
+		area(array_t, [array_eb array_el array_eg])
 		
 		subplot(2,2,2)
 		xslice = ceil(map.GD3.ncols / 2);
@@ -208,12 +215,12 @@ for i = 1:iter
 		z_shift = - floor(z_cen / map.GD3.Dz);
 	%	z_shift = sign(z_shift);
 
-		%map.F = circshift(map.F, [0,0,sign(z_shift)]);
-		%map.setDistance
+		map.F = circshift(map.F, [0,0,sign(z_shift)]);
+		map.setDistance
 		map.F = map.WENO5RK3Reinitialization(map.F,200);
 		%map.GPUsetCalculusToolBox
 
-		%map.A = circshift(map.A, [0,0,sign(z_shift)]);
+		map.A = circshift(map.A, [0,0,sign(z_shift)]);
 		map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
 		%map.GPUAsetCalculusToolBox
 

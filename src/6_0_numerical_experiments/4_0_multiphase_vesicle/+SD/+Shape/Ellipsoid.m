@@ -4,7 +4,6 @@
 
 function [x,y,z,f,a,b,c] = Ellipsoid(Size, reducedVolume, TYPE)
 
-	ratio = 0.4;
 	% create a meshgrid
 	Nx = Size(1);
 	Ny = Size(2);
@@ -28,6 +27,7 @@ function [x,y,z,f,a,b,c] = Ellipsoid(Size, reducedVolume, TYPE)
 
 	% load reducedvolume vs c data if exists, otherwise calculate it
 	if TYPE=='Oblate' || TYPE=='O' || TYPE=='o'
+		ratio = 0.35;
 		FILE = fullfile('+SD','+Shape','EllipsoidOblateReducedVolume.mat');
 		if exist(FILE)
 			load(FILE)
@@ -47,6 +47,7 @@ function [x,y,z,f,a,b,c] = Ellipsoid(Size, reducedVolume, TYPE)
 	end
 
 	if TYPE=='Prolate' || TYPE=='P' || TYPE=='p'
+		ratio = 0.4;
 		FILE = fullfile('+SD','+Shape','EllipsoidProlateReducedVolume.mat');
 		if exist(FILE)
 			load(FILE)
