@@ -10,8 +10,8 @@
 
 % rd: reduced volume, ration of area for the lipid disordered phase
 %rd = 0.76; AreaRatioLd = 0.56; ra = 2;
-%rd = 0.84; AreaRatioLd = 0.18; ra = 2;
-rd = 0.98; AreaRatioLd = 0.89; ra = 1.5;
+rd = 0.84; AreaRatioLd = 0.18; ra = 2;
+%rd = 0.98; AreaRatioLd = 0.89; ra = 1.5;
 %rd = 0.98; AreaRatioLd = 0.95;
 
 GridSize = [64,64,64];
@@ -133,7 +133,7 @@ for i = 1:iter
 	tmp = expectedVolume - CurrentVolume;
 	tmp = sign(tmp) * min(abs(tmp), 0.001*CurrentVolume);
 	s1 = tmp / Dt + map.surfaceIntegral(NormalSpeedBend);
-	%s1 = (InitialVolume - CurrentVolume) / Dt + ...
+	%s1 = (expectedVolume - CurrentVolume) / Dt + ...
 	%	map.surfaceIntegral(NormalSpeedBend);
 
 	sLine = map.LineIntegral(LineNormalSpeed);
@@ -152,7 +152,8 @@ for i = 1:iter
 	normalSpeed = Tension .* map.MeanCurvature - NormalSpeedBend + Pressure;
 
 	% time step level set function
-	normalSpeedSmoothed = smoothFFT(map, normalSpeed.*map.FGradMag, Dt, 0.5*KappaB);
+	normalSpeedSmoothed = smoothFFT(map, normalSpeed.*map.FGradMag, Dt, 0.5*KappaBLo);
+	% it is import to use KappaBLo instead of KappaB 
 	%normalSpeedSmoothed = smoothGMRES(map, normalSpeed.*map.FGradMag, Dt, 0.5);
 	normalSpeedSmoothed = map.ENORK2Extend(normalSpeedSmoothed, 100);
 

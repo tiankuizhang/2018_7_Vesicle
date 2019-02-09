@@ -378,7 +378,7 @@ classdef GD3 < handle
 	end
 
 	methods
-		function DrawBox(obj)
+		function DrawBox2(obj)
 			hold on
 			line([obj.xmin,obj.xmax,obj.xmax,obj.xmin,obj.xmin],...
 				 [obj.ymin,obj.ymin,obj.ymax,obj.ymax,obj.ymin],...
@@ -392,6 +392,14 @@ classdef GD3 < handle
 			line([obj.xmin,obj.xmin],[obj.ymax,obj.ymax],[obj.zmin,obj.zmax],'Color','k')
 			line([obj.xmax,obj.xmax],[obj.ymin,obj.ymin],[obj.zmin,obj.zmax],'Color','k')
 			line([obj.xmax,obj.xmax],[obj.ymax,obj.ymax],[obj.zmin,obj.zmax],'Color','k')
+			hold off
+		end
+		function DrawBox(obj)
+			hold on
+			line([obj.xmin,obj.xmax,obj.xmax,obj.xmax,obj.xmin,obj.xmin,obj.xmin],...
+				 [obj.ymin,obj.ymin,obj.ymin,obj.ymax,obj.ymax,obj.ymax,obj.ymin],...
+				 [obj.zmin,obj.zmin,obj.zmax,obj.zmax,obj.zmax,obj.zmin,obj.zmin],...
+				 'Color','k');
 			hold off
 		end
 	end

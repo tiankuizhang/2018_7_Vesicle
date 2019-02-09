@@ -3,10 +3,10 @@
 % a new scheme to impose constraints used
 
 
-rd = 0.95; ra = 0.80;
+rd = 0.999; ra = 0.80;
 GridSize = [64,64,64];
-type = "o" % choose c
-%type = "p" % choose a
+%type = "o" % choose c
+type = "p" % choose a
 KappaL = 10; % isotropic line tension
 iter = 1500;
 
