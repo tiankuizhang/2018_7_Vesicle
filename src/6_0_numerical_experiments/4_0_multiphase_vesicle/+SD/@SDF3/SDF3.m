@@ -52,6 +52,8 @@ classdef SDF3 < handle
 		zpu
 		zpd
 		min_dist
+
+		Box
 	end
 
 

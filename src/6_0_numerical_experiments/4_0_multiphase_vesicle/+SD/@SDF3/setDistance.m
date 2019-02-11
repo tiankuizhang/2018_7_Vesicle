@@ -20,4 +20,14 @@ function setDistance(obj)
 
 	obj.min_dist = min(minx, min(miny,minz));
 
+	xrange = obj.GD3.X(obj.xpr < obj.GD3.Dx | obj.xpl < obj.GD3.Dx);
+	yrange = obj.GD3.Y(obj.ypf < obj.GD3.Dy | obj.ypb < obj.GD3.Dy);
+	zrange = obj.GD3.Z(obj.zpu < obj.GD3.Dz | obj.zpd < obj.GD3.Dz);
+
+	xmin = min(xrange); xmax = max(xrange);
+	ymin = min(yrange); ymax = max(yrange);
+	zmin = min(zrange); zmax = max(zrange);
+
+	obj.Box = [xmin,xmax,ymin,ymax,zmin,zmax];
+
 end

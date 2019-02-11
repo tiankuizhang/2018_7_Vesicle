@@ -1,10 +1,33 @@
-% simulate single phase vesicle with constrained reduced volume and area difference
+% simulate single phase vesicle with constant pressure
 
-TYPE = "o"; rd = 0.80; rad = .90; adrate = 0.00100;
-%TYPE = "p"; rd = 0.98; rad = 1.2; adrate = 0.0001;
+% prolate --> tube
+%TYPE="p"; ratio = 0.2; rd = 0.75;PresetP = -2000; GridSize = [64,64,96]; ConserveRAD = false; PresetTDA = 0;
 
-GridSize = [64,64,64];
-[x,y,z,f] = SD.Shape.Ellipsoid(GridSize,rd,TYPE,0.35);
+% prolate --> pear --> pear pinching
+%TYPE="p"; ratio = 0.35; rd = 0.75; PresetP = 700; GridSize = [64,64,64]; ConserveRAD = true;
+
+%TYPE = "p"; ratio = 0.35; rd = 0.75; PresetP = 500; GridSize = [64,64,64];
+
+% oblate --> sphere
+TYPE="o";ratio=0.25; rd = 0.75; PresetP = -100; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 50;
+
+% oblate --> torus
+%TYPE="o";ratio=0.25; rd = 0.75; PresetP = -1000; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 13;
+
+% oblate --> prolate --> dumbell --> tube
+%TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 10;
+%TYPE="o";ratio=0.25; rd = 0.75; PresetP = -300; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 13;
+
+% oblate --> four leg starfish
+%TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 20;
+
+% oblate --> three leg starfish
+%TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 12;
+%TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 15;
+
+%TYPE="o";ratio=0.25; rd = 0.99; PresetP = -300; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = -50;
+
+[x,y,z,f] = SD.Shape.Ellipsoid(GridSize,rd,TYPE,ratio);
 grid = SD.GD3(x,y,z);
 map = SD.SDF3(grid,x,y,z,f);
 
@@ -33,8 +56,6 @@ textZ = gather(map.GD3.zmin);
 KappaB = 1.0; % bending rigidity
 CFLNumber = .2;
 filterWidth = gather(map.GD3.Ds)*5.0;
-
-ExpectedAreaDifference = 8.*pi*EquivalentRadius * (-rad);
 
 time = 0;
 array_ene = [];
@@ -83,21 +104,28 @@ for i = 0:3000
 
 	volumeChangeRate = (InitialVolume - CurrentVolume) / Dt;
 	areaChangeRate = (InitialArea - CurrentArea) / Dt;
-
-	if i < 500
-		areaDifferenceChangeRate = (InitialAreaDifference - CurrentAreaDifference) / (2*Dt);
-	else
-		tmp = ExpectedAreaDifference - CurrentAreaDifference;
-		tmp = sign(tmp) * min(abs(tmp), adrate*abs(ExpectedAreaDifference) )/ 2.;
-		areaDifferenceChangeRate = tmp / Dt;
-	end
+	areaDifferenceChangeRate = (InitialAreaDifference - CurrentAreaDifference) / (2*Dt);
 
 	s1 = volumeChangeRate + map.surfaceIntegral(NormalSpeedBend);
 	s2 = - areaChangeRate + map.surfaceIntegral(NormalSpeedBend.*MeanCurvature);
 	s3 = - areaDifferenceChangeRate + map.surfaceIntegral(NormalSpeedBend.*GaussianCurvature);
 
-	PTA = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
-	Pressure = PTA(1); Tension = PTA(2); TensionDA = PTA(3);
+	% conserve volume, area and area difference
+	%PTA = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
+	%Pressure = PTA(1); Tension = PTA(2); TensionDA = PTA(3);
+
+
+	if ConserveRAD
+		% conserve area and area difference, set volume to be constant
+		Pressure = PresetP;
+		TA = [c22,c23;c32,c33] \ [s2-Pressure*c21; s3-Pressure*c31];
+		Tension = TA(1); TensionDA = TA(2);
+	else
+		% conserve only area, set pressure to be constant
+		Pressure = PresetP; TensionDA =  PresetTDA;
+		Tension = (s2 - Pressure*c21 - TensionDA*c23) / c22; 
+	end
+
 
 	% now calculate normal speed
 	normalSpeed = Tension .* MeanCurvature + Pressure + ...

@@ -2,7 +2,7 @@
 % the default half axis are a=1,b=1,c for oblate
 % and a=1, b=c for prolate 
 
-function [x,y,z,f,a,b,c] = Ellipsoid(Size, reducedVolume, TYPE)
+function [x,y,z,f,a,b,c] = Ellipsoid(Size, reducedVolume, TYPE, ratio)
 
 	% create a meshgrid
 	Nx = Size(1);
@@ -27,7 +27,6 @@ function [x,y,z,f,a,b,c] = Ellipsoid(Size, reducedVolume, TYPE)
 
 	% load reducedvolume vs c data if exists, otherwise calculate it
 	if TYPE=='Oblate' || TYPE=='O' || TYPE=='o'
-		ratio = 0.35;
 		FILE = fullfile('+SD','+Shape','EllipsoidOblateReducedVolume.mat');
 		if exist(FILE)
 			load(FILE)
@@ -47,7 +46,6 @@ function [x,y,z,f,a,b,c] = Ellipsoid(Size, reducedVolume, TYPE)
 	end
 
 	if TYPE=='Prolate' || TYPE=='P' || TYPE=='p'
-		ratio = 0.4;
 		FILE = fullfile('+SD','+Shape','EllipsoidProlateReducedVolume.mat');
 		if exist(FILE)
 			load(FILE)
