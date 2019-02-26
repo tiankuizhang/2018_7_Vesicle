@@ -188,6 +188,12 @@ classdef SDF3 < handle
 			%val = valNeg * ones(obj.GD3.Size,'gpuArray');
 			%val(obj.A>0) = valPos;
 		end
+		function [ft,fn] = AsurfaceDerivative(obj,field)
+			% assuming field is alread extended away from the surface
+			[fx,fy,fz] = obj.GD3.Gradient(field);
+			ft = obj.GD3.DotProduct(fx,fy,fz,obj.tx,obj.ty,obj.tz);
+			fn = obj.GD3.DotProduct(fx,fy,fz,obj.nx,obj.ny,obj.nz);
+		end
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
