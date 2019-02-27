@@ -60,5 +60,7 @@ function GPUAsetCalculusToolBox(obj)
 
 	obj.AFDiracDelta = obj.GD3.DotProduct(obj.Cx,obj.Cy,obj.Cz,chx,chy,chz) ./ obj.NormCrossAF.^2;
 
+	obj.ADiracDeltaDn = (obj.GD3.Laplacian(obj.AHeaviside) - obj.ADiracDelta .* obj.GD3.Laplacian(obj.A) ) ./ obj.AGradMag;
+
 	
 end

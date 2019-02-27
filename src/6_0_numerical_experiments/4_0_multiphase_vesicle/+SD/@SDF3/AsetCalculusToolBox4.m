@@ -81,6 +81,7 @@ function AsetCalculusToolBox4(obj)
 	[chx,chy,chz] = obj.GD3.CrossProduct(h2x,h2y,h2z,h1x,h1y,h1z);
 	obj.AFDiracDelta = obj.GD3.DotProduct(obj.Cx,obj.Cy,obj.Cz,chx,chy,chz) ./ obj.NormCrossAF.^2;
 
+	obj.ADiracDeltaDn = (obj.GD3.Laplacian4(obj.AHeaviside) - obj.ADiracDelta .* obj.GD3.Laplacian4(obj.A) ) ./ obj.AGradMag;
 end
 
 

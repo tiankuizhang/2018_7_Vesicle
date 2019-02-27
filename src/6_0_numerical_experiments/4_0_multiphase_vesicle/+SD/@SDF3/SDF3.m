@@ -155,6 +155,7 @@ classdef SDF3 < handle
 		AHPrimal
 		AHeaviside
 		ADiracDelta
+		ADiracDeltaDn
 		AFDiracDelta % product of ADiracDelta and FDiracDelta
 
 	end
