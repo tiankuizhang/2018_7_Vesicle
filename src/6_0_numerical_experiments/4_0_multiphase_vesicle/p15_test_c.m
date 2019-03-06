@@ -153,18 +153,15 @@ for i = 1:iter
 % update c field  given normalSpeed and AnormalSpeed
 	localArea = map.WENORK3Extend(localArea,100);
 	% change due to divergence of velocity field
-	Divergence = localArea .* (- MeanCurvature .* normalSpeed ...
-			+ AnormalSpeed .* map.AGradMag ...
-				.* ( map.ADiracDelta.*GeodesicCurvature + map.ADiracDeltaDn) );
+	%Divergence = - MeanCurvature .* normalSpeed + AnormalSpeed .* map.AGradMag ...
+	%				.* ( map.ADiracDelta.*GeodesicCurvature + map.ADiracDeltaDn) ;
+	Divergence = - MeanCurvature .* normalSpeed ;
 	% advection velocity and advection term
-	vx = map.nx .* AnormalSpeed .* map.ADiracDeltaDn .* map.AGradMag;
-	vy = map.ny .* AnormalSpeed .* map.ADiracDeltaDn .* map.AGradMag;
-	vz = map.nz .* AnormalSpeed .* map.ADiracDeltaDn .* map.AGradMag;
 	Advection = zeros(map.GD3.Size, 'gpuArray');
-	Advection = feval(map.advection_step,Advection,vx,vy,vz,localArea,...
-			map.GD3.mrows,map.GD3.ncols,map.GD3.lshts,...
-			map.GD3.Dx,map.GD3.Dy,map.GD3.Dz);
-	DcDt = smoothDiffusionFFT(map,Divergence+Advection,Dt,0.5);
+	%Advection = feval(map.advection_step,Advection,vx,vy,vz,localArea,...
+	%		map.GD3.mrows,map.GD3.ncols,map.GD3.lshts,...
+	%		map.GD3.Dx,map.GD3.Dy,map.GD3.Dz);
+	DcDt = smoothDiffusionFFT(map,Divergence.*localArea+Advection,Dt,0.5);
 	localArea = localArea - Dt * DcDt;
 	localArea = map.WENORK3Extend(localArea,100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
@@ -223,8 +220,8 @@ for i = 1:iter
 		%map.plotField(0,localTension+Tension,0.01)
 		%map.plotField(0,localTension,0.01)
 		%map.plotField(0,residual,0.01)
-		%map.plotField(0,localArea,0.01)
-		map.plotField(0,Divergence,0.01)
+		map.plotField(0,localArea,0.01)
+		%map.plotField(0,Divergence,0.01)
 		map.GD3.DrawBox
 
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])

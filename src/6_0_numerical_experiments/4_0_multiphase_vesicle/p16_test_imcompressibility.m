@@ -1,5 +1,4 @@
-% simulate two phase vesicle without imposing imcompressibility
-% and calculate local Lagrange multiplier that enforces imcompressibility
+% simulate two phase imcompressible vesicle 
 
 % rd: reduced volume, ration of area for the lipid disordered phase
 %rd = 0.76; AreaRatioLd = 0.56; ra = 2;
@@ -51,6 +50,7 @@ array_el = [];
 array_eg = [];
 
 CFLNumber = 1;
+localArea = ones(map.GD3.Size,'gpuArray');
 for i = 1:iter
 	map.GPUsetCalculusToolBox
 	map.GPUAsetCalculusToolBox
@@ -74,11 +74,9 @@ for i = 1:iter
 	MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);
 	GaussianCurvature = map.WENORK3Extend(map.GaussianCurvature,100);
 	MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(map.MeanCurvature); 
-	NormalBendSpeed = KappaBField .* ( MeanCurvatureSurfaceLaplacian + ...
+	NormalBendSpeed = - KappaBField .* ( MeanCurvatureSurfaceLaplacian + ...
 	 0.5 * MeanCurvature.^3 - 2 * MeanCurvature .* GaussianCurvature );
 	NormalBendSpeed = map.ENORK2Extend(NormalBendSpeed, 100);
-	%mask = abs(map.F)<2*map.GD3.Ds;
-	%MaxSpeedBend = max(abs(NormalSpeedBend(mask)));
 
 	% line forces in N direction
 	[~,MeanCurvatureDn] = map.AsurfaceDerivative(MeanCurvature);
@@ -91,7 +89,6 @@ for i = 1:iter
 	LineSpeedN = map.ENORK2Extend(LineSpeedN,100);
 
 	% line forces in n direction
-	%GeodesicCurvature = map.AENORK2Extend(map.GeodesicCurvature,50,100,50);
 	GeodesicCurvature = map.WENORK3Extend(map.GeodesicCurvature,100);
 	LineSpeedn =  KappaL * GeodesicCurvature ...
 				- KappaG * GaussianCurvature ...
@@ -99,7 +96,7 @@ for i = 1:iter
 	LineSpeedn = map.AENORK2Extend(LineSpeedn, 50, 100, 50);
 
 	% (minus) total force in N direction
-	NormalSpeedBend = NormalBendSpeed - LineSpeedN .* map.ADiracDelta .* map.AGradMag;
+	NormalSpeedBend = NormalBendSpeed + LineSpeedN .* map.ADiracDelta .* map.AGradMag;
 
 	% determine the appropriate time step
 	mask = abs(map.F)<2*map.GD3.Ds;
@@ -108,49 +105,53 @@ for i = 1:iter
 	Dt = CFLNumber * map.GD3.Ds / MaxSpeedBend;
 	time = time + Dt;
 
-	% solve for tension and pressure to constrain total area and volume
-	c11 = InitialArea; 
-	c12 = map.AsurfaceIntegral(MeanCurvature); c21 = c12;
-	c13 = map.surfaceIntegral(MeanCurvature.*map.AHeaviside); c31 = c13;
-	c23 = - map.calLength; c32 = c23;
-	c22 = map.AsurfaceIntegral(MeanCurvature.^2) - c23;
-	c33 = map.surfaceIntegral(MeanCurvature.^2 .* map.AHeaviside) - c23;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+% solve for tension and pressure
+	cNegative = map.AsurfaceIntegral(localArea);
+	cPositive = map.surfaceIntegral(localArea) - cNegative;
+	cRescaleNeg = AreaNegative / cNegative;
+	cRescalePos = AreaPositive / cPositive;
+	cRescale = map.BivalueField(cRescaleNeg,cRescalePos); 
+	localArea = localArea .* cRescale; % rescale to satisfy global area constraints
 
-	tmp = expectedVolume - CurrentVolume;
-	tmp = sign(tmp) * min(abs(tmp), 0.001*CurrentVolume);
-	s1 = tmp / Dt + map.surfaceIntegral(NormalSpeedBend);
+	Dv = expectedVolume - CurrentVolume; % expected change in volume
+	Dv = sign(Dv) * min(abs(Dv), 0.001*CurrentVolume);
+	[Pressure,Tension,residual] = LocalTensionPressure(map,CurrentArea,...
+			MeanCurvature,GeodesicCurvature,NormalSpeedBend,LineSpeedN,localArea,Dv,Dt);
 
-	sLine = map.LineIntegral(LineSpeedn);
-	s2 = - (AreaNegative - CurrentNegativeArea) / Dt + ...
-		map.AsurfaceIntegral(MeanCurvature.*NormalSpeedBend) + sLine;
-	s3 = - (AreaPositive - CurrentPositiveArea) / Dt + ...
-		map.surfaceIntegral(MeanCurvature.*NormalSpeedBend.*map.AHeaviside) - sLine;...
-
-	TP = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
-	Pressure = TP(1);
-	TensionNegative = TP(2);
-	TensionPositive = TP(3);
-	Tension = map.BivalueField(TensionNegative, TensionPositive);
-
-	% now calculate normal Speed for both level sets
-	normalSpeed = Tension .* MeanCurvature - NormalSpeedBend + Pressure;
-	AnormalSpeed = LineSpeedn + TensionPositive - TensionNegative;
+	% normal and tangential speed
+	normalSpeed = Tension .* MeanCurvature + NormalSpeedBend + Pressure;
+	[vx,vy,vz] = map.GD3.Gradient(Tension);
+	vx = vx + map.nx .* LineSpeedn .* map.ADiracDelta .* map.AGradMag;
+	vy = vy + map.ny .* LineSpeedn .* map.ADiracDelta .* map.AGradMag;
+	vz = vz + map.nz .* LineSpeedn .* map.ADiracDelta .* map.AGradMag;
+	% line velocity
+	vn = vx.*map.nx + vy.*map.ny + vz.*map.nz;
+	tmp = map.ADiracDelta .* map.AGradMag;
+	tmp = sign(tmp) .* max(abs(tmp), 1);
+	vn = vn ./ tmp; 
+	vn = map.AENORK2Extend(vn, 50, 100, 50);
+	%AnormalSpeed = vn + LineSpeedn;
+	AnormalSpeed = zeros(map.GD3.Size,'gpuArray');
+	%AnormalSpeed = LineSpeedn;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-% calculate local Lagrange multiplier
-	Alpha = (c22+c33+c23+c32)/c11;
-	localArea = ones(map.GD3.Size,'gpuArray');
-	normalSpeed0 = Tension .* MeanCurvature - NormalBendSpeed + Pressure;
-	[localTension,residual] = localLagrangeMultiplier(map,...
-		MeanCurvature,GeodesicCurvature,normalSpeed0,AnormalSpeed*0,localArea,Dt,Alpha);
-	localTension = map.WENORK3Extend(localTension,100);
-	residual = map.WENORK3Extend(residual,100);
-	
-	% volume change due to local tension
-	volumeChangelt = map.surfaceIntegral(MeanCurvature.*localTension) / expectedVolume;
-
+% update c field  given normalSpeed and AnormalSpeed
+	localArea = map.WENORK3Extend(localArea,100);
+	% change due to divergence of velocity field
+	Divergence = residual + ((localArea-1)./localArea) / Dt;
+	% advection velocity and advection term
+	vx = map.nx .* AnormalSpeed .* map.ADiracDeltaDn .* map.AGradMag;
+	vy = map.ny .* AnormalSpeed .* map.ADiracDeltaDn .* map.AGradMag;
+	vz = map.nz .* AnormalSpeed .* map.ADiracDeltaDn .* map.AGradMag;
+	Advection = zeros(map.GD3.Size, 'gpuArray');
+	Advection = feval(map.advection_step,Advection,vx,vy,vz,localArea,...
+			map.GD3.mrows,map.GD3.ncols,map.GD3.lshts,...
+			map.GD3.Dx,map.GD3.Dy,map.GD3.Dz);
+	DcDt = smoothDiffusionFFT(map,Divergence.*localArea+Advection,Dt,0.5);
+	localArea = localArea - Dt * DcDt;
+	localArea = map.WENORK3Extend(localArea,100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-
 	% regularize both speed fields
 	normalSpeedSmoothed = smoothFFT( map, normalSpeed.*map.FGradMag, Dt, ...
 			0.5*max(KappaB,KappaBLo) );
@@ -161,6 +162,7 @@ for i = 1:iter
 	%AnormalSpeed = smoothFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
 	AnormalSpeed = smoothDiffusionFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
 	%AnormalSpeed = smoothGMRES(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
+	AnormalSpeed = map.AENORK2Extend(AnormalSpeed, 50, 100, 50); % reduce asymmteric error
 
 	% timestep level set function
 	map.F = map.F - Dt * normalSpeedSmoothed;
@@ -169,11 +171,12 @@ for i = 1:iter
 	%map.A = map.WENORK3Extend(map.A, 50);
 	%map.A = map.WENORK3Reinitialization(map.A, 100);
 	map.A = map.WENORK3Extend(map.A, 50);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 
 	% do some bookkeeping
-	ene_ld = 0.5 * KappaB * (c22 + c23);
-	ene_lo = 0.5 * KappaBLo * (c33 + c23);
-	ene_l = - KappaL * c23;
+	ene_ld = 0.5 * KappaB * map.AsurfaceIntegral(MeanCurvature.^2);
+	ene_lo = 0.5 * KappaBLo * map.surfaceIntegral(MeanCurvature.^2.*map.AHeaviside);
+	ene_l = KappaL * map.calLength;
 	ene_g = KappaG * map.LineIntegral(map.GeodesicCurvature);
 	ene = ene_ld + ene_lo + ene_l + ene_g;
 
@@ -187,7 +190,7 @@ for i = 1:iter
 			i, ene, DiffArea, DiffVolume, ReducedVolume, DiffPhaseArea)
 	
 
-	if mod(i,2)==0 || i==2
+	if mod(i,3)==0 || i==2
 		timeStr = [sprintf('%04d: %0.5e, %0.5f', i,time,ene)];
 
 		clf(FIG)
@@ -200,9 +203,10 @@ for i = 1:iter
 		%map.plotField(0,normalSpeedSmoothed,0.5)
 		%map.plotField(0,map.AHeaviside,0.01)
 		%map.plotField(0,Tension,0.01)
-		map.plotField(0,localTension+Tension,0.01)
+		%map.plotField(0,localTension+Tension,0.01)
 		%map.plotField(0,localTension,0.01)
 		%map.plotField(0,residual,0.01)
+		map.plotField(0,Tension,0.01)
 		map.GD3.DrawBox
 
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
@@ -216,7 +220,7 @@ for i = 1:iter
 
 		subplot(2,2,4)
 		area(array_t, [array_ld array_lo array_el array_eg])
-		titleStr = [ sprintf('%5d: %.3e, energy:%.3f',i,time,ene) ];
+		titleStr = [ sprintf('%5d: %.3e, energy:%.3f, pressure:%.3f',i,time,ene,Pressure) ];
 		title(titleStr)
 		
 		subplot(2,2,2)
@@ -233,9 +237,9 @@ for i = 1:iter
 		hold off
 		axis equal
 		titlestr = [sprintf('shift:(%1d,%1d,%1d)',sign(x_shift),sign(y_shift),sign(z_shift))];
-		extraStr = [sprintf('\n %.3e , %.3e',volumeChangelt, volumeChangelt*Dt)];
-		title([titlestr,extraStr])
-		%title(titlestr)
+		%extraStr = [sprintf('\n %.3e , %.3e',volumeChangelt, volumeChangelt*Dt)];
+		%title([titlestr,extraStr])
+		title(titlestr)
 		drawnow
 
 
@@ -342,8 +346,13 @@ function [localTension,residual] = localLagrangeMultiplier(map,MeanCurvature,Geo
 			.* (map.ADiracDelta.*GeodesicCurvature + map.ADiracDeltaDn);
 	S = reshape(rhs, [map.GD3.NumElt, 1]);
 
+	% precompute division
+	KSquaredInverse = - 1 ./ (map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2 + Alpha);
 	% it seems that restart about {10,...,15} gives best speed
+	%tic
 	[localTension,~,~,~,~] = gmres(Op, S, 11, 1e-6, 300, @mfun);
+	%localTension = gmres(Op, S, 11, 1e-6, 300, @mfun);
+	%toc
 	residual = Op * localTension - S;
 
 	localTension = reshape(localTension, map.GD3.Size);
@@ -351,10 +360,74 @@ function [localTension,residual] = localLagrangeMultiplier(map,MeanCurvature,Geo
 
 	% preconditioner, Alpha = (c22+c33+c23+c32)/c11 as the mean squared MeanCurvature
 	function y = mfun(S)
-		fftS = fftn(reshape(S,map.GD3.Size));
-		fftS = - fftS ./ (Alpha + map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2);
-		y = real(ifftn(fftS));
-		y = reshape(y, [map.GD3.NumElt, 1]);
+		fftS = fftn(reshape(S,map.GD3.Size)) .* KSquaredInverse;
+		y = reshape(real(ifftn(fftS)), [map.GD3.NumElt, 1]);
 	end
 
 end
+
+
+% calculate local Lagrange multiplier and pressure constraining local area and total volume
+function [Pressure,localTension,residual] = LocalTensionPressure(map,A0,MeanCurvature,GeodesicCurvature,normalSpeed,AnormalSpeed,localArea,Dv,Dt)
+
+	% operator to be solved
+	Op = map.GD3.Lxx + map.GD3.Lyy + map.GD3.Lzz - ...
+			(   map.GD3.SparseDiag(map.Nx .^2) * map.GD3.Lxx + ...
+				map.GD3.SparseDiag(map.Ny .^2) * map.GD3.Lyy + ...
+				map.GD3.SparseDiag(map.Nz .^2) * map.GD3.Lzz + ...
+				map.GD3.SparseDiag(map.Nx .* map.Ny) * map.GD3.Lxy * 2 + ...
+				map.GD3.SparseDiag(map.Ny .* map.Nz) * map.GD3.Lyz * 2 + ...
+				map.GD3.SparseDiag(map.Nz .* map.Nx) * map.GD3.Lzx * 2 ...
+			) ...
+		- map.GD3.SparseDiag(map.MeanCurvature.^2) ;
+	% integral operator
+	Mask = reshape(abs(map.F) < 2*map.GD3.Ds, [map.GD3.NumElt, 1]);
+	OpInt = MeanCurvature.*map.DiracDelta.*map.FGradMag*map.GD3.Ds.^3/A0;
+	OpInt = reshape(OpInt, [map.GD3.NumElt, 1]);
+	OpIntMasked = OpInt(Mask);
+	OpMeanCurvature = reshape(MeanCurvature, [map.GD3.NumElt, 1]);
+
+	%  precompute division
+	Alpha = map.surfaceIntegral(MeanCurvature.^2) / A0;
+	KInverse = -1 ./ (map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2 + Alpha );
+	% right hand side
+	rhs = ((localArea - 1) ./ localArea) / Dt ...
+		+ MeanCurvature .* normalSpeed ...
+		- AnormalSpeed .* map.AGradMag ...
+			.* (map.ADiracDelta.*GeodesicCurvature + map.ADiracDeltaDn) ...
+		+ MeanCurvature .* (Dv/Dt - map.surfaceIntegral(normalSpeed)) / A0; 
+	S = reshape(rhs, [map.GD3.NumElt, 1]);
+
+	% it seems that restart about {10,...,15} gives best speed
+	%[localTension,~,~,~,~] = gmres(Op, S, 11, 1e-6, 300, @mfun);
+	tic 
+	%localTension = gmres(@nfun, S, 20, eps, 300, @mfun1);
+	%[localTension,~,~,~,~] = gmres(Op, S, 11, 1e-6, 300, @mfun);
+	localTension = gmres(@nfun, S, 11, 1e-6, 300, @mfun);
+	%localTension = gmres(@nfun, S, 11, 1e-6, 300, @mfun);
+	%display(flag)
+	toc %~~5s needed
+	residual = nfun(localTension) - S;
+
+	localTension = reshape(localTension, map.GD3.Size);
+	residual = reshape(residual, map.GD3.Size);
+
+	Pressure = (Dv/Dt - map.surfaceIntegral(normalSpeed+localTension.*MeanCurvature))/A0;
+
+	function y = mfun(S)
+		fftS = fftn(reshape(S,map.GD3.Size)) .* KInverse;
+		y = reshape(real(ifftn(fftS)), [map.GD3.NumElt, 1]);
+	end
+
+	function y = nfun(x)
+		y = Op * x + OpMeanCurvature * sum( x(Mask).*OpIntMasked);
+	end
+
+end
+
+
+
+
+
+
+

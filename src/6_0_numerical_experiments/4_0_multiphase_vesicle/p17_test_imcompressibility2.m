@@ -1,5 +1,5 @@
 % simulate two phase vesicle without imposing imcompressibility
-% and calculate local Lagrange multiplier that enforces imcompressibility
+% solve conservation law for local area
 
 % rd: reduced volume, ration of area for the lipid disordered phase
 %rd = 0.76; AreaRatioLd = 0.56; ra = 2;
@@ -50,7 +50,8 @@ array_lo = [];
 array_el = [];
 array_eg = [];
 
-CFLNumber = 1;
+CFLNumber = 0.1;
+localArea = ones(map.GD3.Size,'gpuArray');
 for i = 1:iter
 	map.GPUsetCalculusToolBox
 	map.GPUAsetCalculusToolBox
@@ -108,6 +109,7 @@ for i = 1:iter
 	Dt = CFLNumber * map.GD3.Ds / MaxSpeedBend;
 	time = time + Dt;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 	% solve for tension and pressure to constrain total area and volume
 	c11 = InitialArea; 
 	c12 = map.AsurfaceIntegral(MeanCurvature); c21 = c12;
@@ -139,17 +141,55 @@ for i = 1:iter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 % calculate local Lagrange multiplier
 	Alpha = (c22+c33+c23+c32)/c11;
-	localArea = ones(map.GD3.Size,'gpuArray');
-	normalSpeed0 = Tension .* MeanCurvature - NormalBendSpeed + Pressure;
 	[localTension,residual] = localLagrangeMultiplier(map,...
-		MeanCurvature,GeodesicCurvature,normalSpeed0,AnormalSpeed*0,localArea,Dt,Alpha);
+		MeanCurvature,GeodesicCurvature,normalSpeed,AnormalSpeed,localArea,Dt,Alpha);
 	localTension = map.WENORK3Extend(localTension,100);
 	residual = map.WENORK3Extend(residual,100);
-	
-	% volume change due to local tension
-	volumeChangelt = map.surfaceIntegral(MeanCurvature.*localTension) / expectedVolume;
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+% calulate a global tension and Pressure to constraint total area and volume
+	s1 = - map.surfaceIntegral(localTension.*MeanCurvature);
+	s2 = - map.AsurfaceIntegral(localTension.*MeanCurvature.^2);
+	s3 = - map.surfaceIntegral(localTension.*MeanCurvature.^2.*map.AHeaviside);
+	TP = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
+	Pressure = TP(1);
+	TensionNegative = TP(2);
+	TensionPositive = TP(3);
+	Tension = map.BivalueField(TensionNegative, TensionPositive);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+	% now calculate normal Speed for both level sets
+	normalSpeed = normalSpeed + (localTension + Tension) .* MeanCurvature + Pressure;
+	AnormalSpeed = AnormalSpeed + TensionPositive - TensionNegative;
+	% tangential speed
+	[vx,vy,vz] = map.GD3.Gradient(Tension);
+	vx = vx + map.nx .* LineSpeedn .* map.ADiracDelta .* map.AGradMag;
+	vy = vy + map.ny .* LineSpeedn .* map.ADiracDelta .* map.AGradMag;
+	vz = vz + map.nz .* LineSpeedn .* map.ADiracDelta .* map.AGradMag;
+	% line velocity
+	vn = vx.*map.nx + vy.*map.ny + vz.*map.nz;
+	tmp = map.ADiracDelta .* map.AGradMag;
+	tmp = sign(tmp) .* max(abs(tmp), 1);
+	vn = vn ./ tmp; 
+	vn = map.AENORK2Extend(vn, 50, 100, 50);
+	%AnormalSpeed = vn + AnormalSpeed;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+% update c field  given normalSpeed and AnormalSpeed
+	localArea = map.WENORK3Extend(localArea,100);
+	% change due to divergence of velocity field
+	Divergence = residual + ((localArea-1)./localArea) / Dt ...
+		- MeanCurvature .* ( Pressure + Tension .* MeanCurvature);
+	localArea = localArea - Dt * Divergence .* localArea;
+	localArea = map.WENORK3Extend(localArea,100);
+	% advection velocity and advection term
+	Advection = zeros(map.GD3.Size, 'gpuArray');
+	Advection = feval(map.advection_step,Advection,vx,vy,vz,localArea,...
+			map.GD3.mrows,map.GD3.ncols,map.GD3.lshts,...
+			map.GD3.Dx,map.GD3.Dy,map.GD3.Dz);
+	%DcDt = smoothDiffusionFFT(map,Divergence.*localArea+Advection,Dt,0.5);
+	DcDt = smoothDiffusionFFT(map,Advection,Dt,0.5);
+	localArea = localArea - Dt * DcDt;
+	localArea = map.WENORK3Extend(localArea,100);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+
 
 	% regularize both speed fields
 	normalSpeedSmoothed = smoothFFT( map, normalSpeed.*map.FGradMag, Dt, ...
@@ -161,6 +201,7 @@ for i = 1:iter
 	%AnormalSpeed = smoothFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
 	AnormalSpeed = smoothDiffusionFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
 	%AnormalSpeed = smoothGMRES(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
+	AnormalSpeed = map.AENORK2Extend(AnormalSpeed, 50, 100, 50); % reduce asymmteric error
 
 	% timestep level set function
 	map.F = map.F - Dt * normalSpeedSmoothed;
@@ -187,7 +228,7 @@ for i = 1:iter
 			i, ene, DiffArea, DiffVolume, ReducedVolume, DiffPhaseArea)
 	
 
-	if mod(i,2)==0 || i==2
+	if mod(i,3)==0 || i==2
 		timeStr = [sprintf('%04d: %0.5e, %0.5f', i,time,ene)];
 
 		clf(FIG)
@@ -200,9 +241,11 @@ for i = 1:iter
 		%map.plotField(0,normalSpeedSmoothed,0.5)
 		%map.plotField(0,map.AHeaviside,0.01)
 		%map.plotField(0,Tension,0.01)
-		map.plotField(0,localTension+Tension,0.01)
+		%map.plotField(0,localTension+Tension,0.01)
 		%map.plotField(0,localTension,0.01)
 		%map.plotField(0,residual,0.01)
+		map.plotField(0,localArea,0.01)
+		%map.plotField(0,Divergence,0.01)
 		map.GD3.DrawBox
 
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
@@ -233,9 +276,9 @@ for i = 1:iter
 		hold off
 		axis equal
 		titlestr = [sprintf('shift:(%1d,%1d,%1d)',sign(x_shift),sign(y_shift),sign(z_shift))];
-		extraStr = [sprintf('\n %.3e , %.3e',volumeChangelt, volumeChangelt*Dt)];
-		title([titlestr,extraStr])
-		%title(titlestr)
+		%extraStr = [sprintf('\n %.3e , %.3e',volumeChangelt, volumeChangelt*Dt)];
+		%title([titlestr,extraStr])
+		title(titlestr)
 		drawnow
 
 
@@ -342,8 +385,13 @@ function [localTension,residual] = localLagrangeMultiplier(map,MeanCurvature,Geo
 			.* (map.ADiracDelta.*GeodesicCurvature + map.ADiracDeltaDn);
 	S = reshape(rhs, [map.GD3.NumElt, 1]);
 
+	% precompute division
+	KSquaredInverse = - 1 ./ (map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2 + Alpha);
 	% it seems that restart about {10,...,15} gives best speed
+	%tic
 	[localTension,~,~,~,~] = gmres(Op, S, 11, 1e-6, 300, @mfun);
+	%localTension = gmres(Op, S, 11, 1e-6, 300, @mfun);
+	%toc
 	residual = Op * localTension - S;
 
 	localTension = reshape(localTension, map.GD3.Size);
@@ -351,10 +399,14 @@ function [localTension,residual] = localLagrangeMultiplier(map,MeanCurvature,Geo
 
 	% preconditioner, Alpha = (c22+c33+c23+c32)/c11 as the mean squared MeanCurvature
 	function y = mfun(S)
-		fftS = fftn(reshape(S,map.GD3.Size));
-		fftS = - fftS ./ (Alpha + map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2);
-		y = real(ifftn(fftS));
-		y = reshape(y, [map.GD3.NumElt, 1]);
+		fftS = fftn(reshape(S,map.GD3.Size)) .* KSquaredInverse;
+		y = reshape(real(ifftn(fftS)), [map.GD3.NumElt, 1]);
 	end
 
 end
+
+
+
+
+
+
