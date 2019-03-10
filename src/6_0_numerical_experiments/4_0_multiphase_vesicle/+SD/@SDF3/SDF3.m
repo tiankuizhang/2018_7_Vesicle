@@ -315,6 +315,7 @@ classdef SDF3 < handle
 			axis equal
 			view(45,30)
 			colorbar
+			camlight; lighting gouraud
 		end
 
 		% plot several half contours of the distance function

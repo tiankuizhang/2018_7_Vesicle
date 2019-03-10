@@ -362,6 +362,10 @@ classdef GD3 < handle
 		function mag = Norm(obj,vx,vy,vz)
 			mag = max(sqrt(vx.^2+vy.^2+vz.^2),1e-14);	
 		end
+
+		function val = LimitField(obj,field,pos)
+			val = sign(field) .* min(pos, abs(field));
+		end
 		
 	end
 

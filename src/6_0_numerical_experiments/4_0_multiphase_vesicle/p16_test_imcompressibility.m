@@ -115,9 +115,9 @@ for i = 1:iter
 	localArea = localArea .* cRescale; % rescale to satisfy global area constraints
 
 	Dv = expectedVolume - CurrentVolume; % expected change in volume
-	Dv = sign(Dv) * min(abs(Dv), 0.001*CurrentVolume);
+	Dv = sign(Dv) * min(abs(Dv), 0.01*CurrentVolume);
 	[Pressure,Tension,residual] = LocalTensionPressure(map,CurrentArea,...
-			MeanCurvature,GeodesicCurvature,NormalSpeedBend,LineSpeedN,localArea,Dv,Dt);
+			MeanCurvature,GeodesicCurvature,NormalBendSpeed,LineSpeedN.*0,localArea,Dv,Dt);
 
 	% normal and tangential speed
 	normalSpeed = Tension .* MeanCurvature + NormalSpeedBend + Pressure;
@@ -206,7 +206,8 @@ for i = 1:iter
 		%map.plotField(0,localTension+Tension,0.01)
 		%map.plotField(0,localTension,0.01)
 		%map.plotField(0,residual,0.01)
-		map.plotField(0,Tension,0.01)
+		%map.plotField(0,Tension,0.01)
+		map.plotField(0,localArea,0.01)
 		map.GD3.DrawBox
 
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
@@ -257,6 +258,9 @@ for i = 1:iter
 		map.A = circshift(map.A, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
 		%map.A = map.WENORK3ClosetPointSurfaceRedistance(map.A,20,30);
+
+		localArea = circshift(localArea, [sign(y_shift),sign(x_shift),sign(z_shift)]);
+		localArea = map.WENORK3Extend(localArea,100);
 	end
 
 end

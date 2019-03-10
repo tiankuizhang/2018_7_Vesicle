@@ -1,8 +1,6 @@
 % test scheme to initialize a multidomain multiphase vesicle
 
-radius = 0.98; ra = 1.5; xmax = radius*ra; xmin = -xmax;
-GridSize = [64,64,64];
-
+radius = 0.98; ra = 1.5; xmax = radius*ra; xmin = -xmax; GridSize = [64,64,64];
 rd = 0.98;
 alpha = pi/10;
 domain = [...
