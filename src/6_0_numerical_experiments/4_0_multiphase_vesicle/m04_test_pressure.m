@@ -1,45 +1,58 @@
-% simulate two phase vesicle without imposing imcompressibility
-% solve conservation law for local area
+% test effects of osmotic pressure
 
-radius = 0.98; ra = 2.0; xmax = radius*ra; xmin = -xmax; GridSize = [64,64,64];
+
+radius = 0.98; ra =2.0; xmax = radius*ra; xmin = -xmax; GridSize = [64,64,64];
 rd = 0.85;
 alpha1 = pi/9;
-alpha2 = pi/7;
-alpha3 = pi/4;
+beta1 = -1;
+alpha2 = pi/10;
+alpha3 = pi/6;
+beta3 = pi/4;
 domain1 = [...
-			0,		pi/2,		alpha1;...
-			0,		-pi/2,		alpha1;...
-			0,		0,			alpha1;...
-			pi/2,	0,			alpha1;...
-			pi,		0,			alpha1;...
-			-pi/2,	0,			alpha1;...
+			0,		pi/2,		alpha1,beta1;...
+			0,		-pi/2,		alpha1,beta1;...
+			0,		0,			alpha1,beta1;...
+			pi/2,	0,			alpha1,beta1;...
+			pi,		0,			alpha1,beta1;...
+			-pi/2,	0,			alpha1,beta1;...
 			];
 domain2 = [...
-			pi/4,pi/4,	alpha2;3*pi/4,pi/4,		alpha2; ...
-			-pi/4,pi/4,	alpha2;-3*pi/4,pi/4,	alpha2;...
-			pi/4,-pi/4,	alpha2;3*pi/4,-pi/4,	alpha2; ...
-			-pi/4,-pi/4,alpha2;-3*pi/4,-pi/4,	alpha2;...
+			pi/4,pi/4,	alpha2,-1;	3*pi/4,pi/4,	alpha2,-1; ...
+			-pi/4,pi/4,	alpha2,-1;	-3*pi/4,pi/4,	alpha2,-1;...
+			pi/4,-pi/4,	alpha2,-1;	3*pi/4,-pi/4,	alpha2,-1; ...
+			-pi/4,-pi/4,alpha2,-1;	-3*pi/4,-pi/4,	alpha2,-1;...
 			];
 domain3 = [...
-			0,		pi/2,		alpha3;...
-			0,		-pi/2,		alpha3;...
+			0,		pi/2,		alpha3,beta3;...
+			0,		-pi/2,		alpha3,beta3;...
 			];
 
-domain = [domain1;domain2];
+%domain = [domain1;domain2];
 %domain = domain2;
+domain = domain3;
+%domain = [0,pi/2,pi/6,pi/4];
 %domain = domain1;
-%domain = domain3;
-%%domain = [0,pi/2,pi/4];
+%domain = [...
+%			0,		pi/2,		alpha1,beta1;...
+%			0,		-pi/2,		alpha1,beta1;...
+%			0,		0,			alpha1*1.1,beta1;...
+%			pi/2,	0,			alpha1,beta1;...
+%			pi,		0,			alpha1,beta1;...
+%			-pi/2,	0,			alpha1,beta1;...
+%			];
+%
+Pressure = - 200; ConsereVol = false;
+%ConsereVol = true;
 
-[x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere([xmin,xmax],GridSize,radius,rd,domain);
+[x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere2([xmin,xmax],GridSize,radius,rd,domain);
 Grid = SD.GD3(x,y,z);
 map = SD.SDF3(Grid,x,y,z,F);
 map.A = A;
 
 % bending mudulus
 KappaB = 1.0; % bending rigidity for Ld phase
-KappaBLo = 5.0 * KappaB; % bending rigidity for Lo phase
-KappaL = 30; % isotropic line tension
+KappaBLo = 1 * KappaB; % bending rigidity for Lo phase
+KappaL = 70; % isotropic line tension
 KappaG = 0; % difference in Gaussian bending rigidity: Ld - Lo
 
 iter = 1500;
@@ -51,8 +64,10 @@ map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
 
 map.GPUsetCalculusToolBox
 map.GPUAsetCalculusToolBox
-InitialArea = 4*pi*radius^2;
+InitialArea = 4*pi*radius^2*1.0;
+%InitialArea = 4*pi*radius^2;
 InitialVolume = (4*pi/3)*radius^3;
+%expectedVolume = InitialVolume;
 expectedVolume = volume;
 AreaNegative = map.AcalArea;
 AreaPositive = InitialArea - AreaNegative;
@@ -150,15 +165,16 @@ for i = 1:iter
 	rhs = map.GD3.LimitField( ((localArea - 1)./localArea)/Dt, 0.1/Dt) ...
 		- MeanCurvature.*normalSpeedBendSmoothed;
 	%rhs = - MeanCurvature.*NormalBendSpeed;
-	[localTension,residual] = localLagrangeMultiplier(map,rhs,Dt,Alpha);
-	localTension = map.WENORK3Extend(localTension,100);
+	%[localTension,residual] = localLagrangeMultiplier(map,rhs,Dt,Alpha);
+	%localTension = map.WENORK3Extend(localTension,100);
 	%residual = map.WENORK3Extend(residual,100);
-	%localTension = zeros(map.GD3.Size,'gpuArray');
+	localTension = zeros(map.GD3.Size,'gpuArray');
 
 	NormalSpeedBend = NormalSpeedBend - localTension .* MeanCurvature;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 	% solve for tension and pressure to constrain total area and volume
 	c11 = InitialArea; 
+	%c11 = AreaNegative; 
 	c12 = map.AsurfaceIntegral(MeanCurvature); c21 = c12;
 	c13 = map.surfaceIntegral(MeanCurvature.*map.AHeaviside); c31 = c12 + c13;
 	c23 = - map.calLength; 
@@ -166,7 +182,7 @@ for i = 1:iter
 	c33 = map.surfaceIntegral(MeanCurvature.^2 .* map.AHeaviside) ;
 	c32 = c33 + c22 + c23;
 
-	tmp = map.GD3.LimitField(expectedVolume - CurrentVolume, 0.01*CurrentVolume);
+	tmp = map.GD3.LimitField(expectedVolume - CurrentVolume, 0.001*InitialVolume);
 	s1 = tmp / Dt + map.surfaceIntegral(NormalSpeedBend);
 
 	sLine = map.LineIntegral(LineSpeedn);
@@ -178,11 +194,30 @@ for i = 1:iter
 	tmp = map.GD3.LimitField(InitialArea-CurrentArea,0.01*InitialArea);
 	s3 = - tmp / Dt + map.surfaceIntegral(MeanCurvature.*NormalSpeedBend);
 
-	TP = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
-	Pressure = TP(1);
-	TensionNegative = TP(2);
-	TensionPositive = TP(3) + TP(2);
-	Tension = map.BivalueField(TensionNegative, TensionPositive);
+%	TP = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
+%	PressureNegative = TP(1);
+%	TensionNegative = TP(2);
+%	TensionPositive = TP(3) + TP(2);
+%	Tension = map.BivalueField(TensionNegative, TensionPositive);
+%	Pressure = map.BivalueField(PressureNegative, 0);
+
+%	if DiffVolume < 1 
+%		ConsereVol = true;
+%		KappaL = 70;
+%	end
+	if ConsereVol 
+		TP = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
+		Pressure = TP(1);
+		TensionNegative = TP(2);
+		TensionPositive = TP(3) + TP(2);
+		Tension = map.BivalueField(TensionNegative, TensionPositive);
+	else
+		TP = [c22,c23;c32,c33] \ [s2-Pressure*c21; s3-Pressure*c31];
+		TensionNegative = TP(1);
+		TensionPositive = TP(2) + TP(1);
+		Tension = map.BivalueField(TensionNegative, TensionPositive);
+	end
+%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 	% now calculate normal Speed for both level sets
@@ -260,8 +295,8 @@ for i = 1:iter
 			i, ene, DiffArea, DiffVolume, ReducedVolume, DiffPhaseArea)
 	
 
-	if mod(i,20)==0 || i==2
-	%if  i>1
+	%if mod(i,3)==0 || i==2
+	if  i>1
 		timeStr = [sprintf('%04d: %0.5e, %0.5f', i,time,ene)];
 
 		clf(FIG)
@@ -270,7 +305,9 @@ for i = 1:iter
 		titlestr = [ sprintf(' rd:%.3f, kd:%.1f,ko:%.1f,kl:%.1f,kg:%.1f ', ...
 				ReducedVolume,KappaB,KappaBLo,KappaL,KappaG) ];
 		title(titlestr)
-		map.plotField(0,map.AHeaviside,0.0);colormap(gca,[1,0,0;0,0,1]);
+		Field = map.AHeaviside; Field(map.GD3.X>2*map.GD3.Ds)=nan;
+		map.plotField(0,Field,0.0);colormap(gca,[1,0,0;0,0,1]);
+		%map.plotField(0,map.AHeaviside,0.0);colormap(gca,[1,0,0;0,0,1]);
 		colorbar off; 
 		%map.plotSurface(0,1,'Green','black');textZ = gather(map.GD3.zmin);
 		%map.plotField(0,normalSpeedSmoothed,0.5)
@@ -298,34 +335,34 @@ for i = 1:iter
 		titleStr = [ sprintf('%5d: %.3e, energy:%.3f',i,time,ene) ];
 		title(titleStr)
 		
-		subplot(2,2,2)
-		map.plotField(0,localArea,0.01)
-		map.GD3.DrawBox
-		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
-		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
-		zticks([map.GD3.BOX(5),0,map.GD3.BOX(6)])
-		axis vis3d equal
-		set(gca,'Color','k')
-		titlestr = [sprintf('shift:(%1d,%1d,%1d)',sign(x_shift),sign(y_shift),sign(z_shift))];
-		title(titlestr)
-
 %		subplot(2,2,2)
-%		xslice = ceil(map.GD3.ncols / 2);
-%		Fslice = reshape(map.F(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
-%		Aslice = reshape(map.A(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
-%		Y = reshape(map.GD3.Y(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
-%		Z = reshape(map.GD3.Z(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
-%		Fpositive = Fslice; Fpositive(Aslice<0) = nan;
-%		Fnegative = Fslice; Fnegative(Aslice>0) = nan;
-%		contour(Y,Z,Fpositive,[0,0],'blue','LineWidth',3)
-%		hold on
-%		contour(Y,Z,Fnegative,[0,0],'red','LineWidth',3)
-%		hold off
-%		axis equal
+%		map.plotField(0,localArea,0.01)
+%		map.GD3.DrawBox
+%		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
+%		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
+%		zticks([map.GD3.BOX(5),0,map.GD3.BOX(6)])
+%		axis vis3d equal
+%		set(gca,'Color','k')
 %		titlestr = [sprintf('shift:(%1d,%1d,%1d)',sign(x_shift),sign(y_shift),sign(z_shift))];
-%		%extraStr = [sprintf('\n %.3e , %.3e',volumeChangelt, volumeChangelt*Dt)];
-%		%title([titlestr,extraStr])
 %		title(titlestr)
+
+		subplot(2,2,2)
+		xslice = ceil(map.GD3.ncols / 2);
+		Fslice = reshape(map.F(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
+		Aslice = reshape(map.A(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
+		Y = reshape(map.GD3.Y(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
+		Z = reshape(map.GD3.Z(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
+		Fpositive = Fslice; Fpositive(Aslice<0) = nan;
+		Fnegative = Fslice; Fnegative(Aslice>0) = nan;
+		contour(Y,Z,Fpositive,[0,0],'blue','LineWidth',3)
+		hold on
+		contour(Y,Z,Fnegative,[0,0],'red','LineWidth',3)
+		hold off
+		axis equal
+		titlestr = [sprintf('shift:(%1d,%1d,%1d)',sign(x_shift),sign(y_shift),sign(z_shift))];
+		%extraStr = [sprintf('\n %.3e , %.3e',volumeChangelt, volumeChangelt*Dt)];
+		%title([titlestr,extraStr])
+		title(titlestr)
 
 		drawnow
 

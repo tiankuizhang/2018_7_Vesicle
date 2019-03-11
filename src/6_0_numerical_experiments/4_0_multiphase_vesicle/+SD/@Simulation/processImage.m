@@ -22,11 +22,14 @@ function processImage(obj, videoTime)
 			[A,map] = rgb2ind(img,256);
 			BGColor = double(A(1)); % background color to be set to be transparent
 			if ii == 1
-				imwrite(A, map, videoOutput, 'gif', 'LoopCount', Inf, ...
-						'DelayTime', DelayTime, 'TransparentColor', BGColor);
+				%imwrite(A, map, videoOutput, 'gif', 'LoopCount', Inf, ...
+				%		'DelayTime', DelayTime, 'TransparentColor', BGColor);
+				imwrite(A, map, videoOutput, 'gif', 'LoopCount', Inf, 'DelayTime', DelayTime);
 			else
+				%imwrite(A, map, videoOutput, 'gif', 'WriteMode', 'append', ...
+				%		'DelayTime', DelayTime, 'TransparentColor', BGColor);
 				imwrite(A, map, videoOutput, 'gif', 'WriteMode', 'append', ...
-						'DelayTime', DelayTime, 'TransparentColor', BGColor);
+						'DelayTime', DelayTime);
 			end
 	
 		end
