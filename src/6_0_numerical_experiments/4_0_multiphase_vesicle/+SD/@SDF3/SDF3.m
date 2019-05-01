@@ -110,10 +110,45 @@ classdef SDF3 < handle
 			[vzx, vzy, vzz] = obj.GD3.Gradient(vz);
 			
 			val = vxx + vyy + vzz ...
-					- obj.Nx .* obj.GD3.DotProduct(obj.Nx, obj.Ny, obj.Nz, vxx, vxy, vxz) ...
-					- obj.Ny .* obj.GD3.DotProduct(obj.Nx, obj.Ny, obj.Nz, vyx, vyy, vyz) ...
-					- obj.Nz .* obj.GD3.DotProduct(obj.Nx, obj.Ny, obj.Nz, vzx, vzy, vzz);
+				- obj.Nx .* obj.GD3.DotProduct(obj.Nx, obj.Ny, obj.Nz, vxx, vxy, vxz) ...
+				- obj.Ny .* obj.GD3.DotProduct(obj.Nx, obj.Ny, obj.Nz, vyx, vyy, vyz) ...
+				- obj.Nz .* obj.GD3.DotProduct(obj.Nx, obj.Ny, obj.Nz, vzx, vzy, vzz);
 		end
+
+		% calculate local Lagrange multiplier constraining local area
+		function [localTension,residual] = localLagrangeMultiplier(obj,rhs,Dt,Alpha)
+			% operator to be solved
+			Op = obj.GD3.Lxx + obj.GD3.Lyy + obj.GD3.Lzz - ...
+					(   obj.GD3.SparseDiag(obj.Nx .^2) * obj.GD3.Lxx + ...
+						obj.GD3.SparseDiag(obj.Ny .^2) * obj.GD3.Lyy + ...
+						obj.GD3.SparseDiag(obj.Nz .^2) * obj.GD3.Lzz + ...
+						obj.GD3.SparseDiag(obj.Nx .* obj.Ny) * obj.GD3.Lxy * 2 + ...
+						obj.GD3.SparseDiag(obj.Ny .* obj.Nz) * obj.GD3.Lyz * 2 + ...
+						obj.GD3.SparseDiag(obj.Nz .* obj.Nx) * obj.GD3.Lzx * 2 ...
+					) ...
+				- obj.GD3.SparseDiag(obj.MeanCurvature.^2) ;
+			% right hand side
+			S = reshape(rhs, [obj.GD3.NumElt, 1]);
+			% precompute division
+			KSquaredInverse = -1./(obj.GD3.kx.^2 + obj.GD3.ky.^2 + obj.GD3.kz.^2 + Alpha);
+			% it seems that restart about {10,...,15} gives best speed
+			%tic
+			%[localTension,~,~,~,~] = gmres(Op, S, 11, 1e-6, 300, @mfun);
+			%localTension = gmres(Op, S, 11, 1e-6, 300, @mfun);
+			%localTension = gmres(Op, S, 20, 1e-1, 300, @mfun);
+			[localTension,~,~,~,~] = gmres(Op, S, 11, 1e-2, 300, @mfun);
+			%toc
+			residual = Op * localTension - S;
+			localTension = reshape(localTension, obj.GD3.Size);
+			residual = reshape(residual, obj.GD3.Size);
+			% preconditioner, 
+			% Alpha = (c22+c33+c23+c32)/c11 as the mean squared MeanCurvature
+			function y = mfun(S)
+				fftS = fftn(reshape(S,obj.GD3.Size)) .* KSquaredInverse;
+				y = reshape(real(ifftn(fftS)), [obj.GD3.NumElt, 1]);
+			end
+		end
+
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

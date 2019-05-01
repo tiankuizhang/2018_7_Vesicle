@@ -412,4 +412,61 @@ classdef GD3 < handle
 		end
 	end
 
+	methods
+
+		% solve (Idt + alpha * Dt * BiLaplacian)^(-1) with GMRES preconditioned by FFT
+		function val = smoothGMRES(obj, rhs, Dt, Alpha)
+			% operator to be solved
+			Op = obj.Idt + Alpha * Dt * obj.LBiLaplacian;
+			% reshape RHS into a colum vector
+			S = reshape(rhs, [obj.NumElt, 1]);
+			[val,~,~,~,~] = gmres(Op, S, [], 1e-12, 300, @mfun);
+			val = reshape(val, obj.Size);
+			% preconditioner
+			function y = mfun(S)
+				fftS = fftn(reshape(S,obj.Size));
+				fftS = fftS ./ (1 + Alpha * Dt * ...
+						(obj.kx.^2 + obj.ky.^2 + obj.kz.^2).^2 );
+				y = real(ifftn(fftS));
+				y = reshape(y, [obj.NumElt, 1]);
+			end
+		end
+
+		% solve (Idt + alpha * Dt * BiLaplacian)^(-1) with FFT
+		function val = smoothFFT(obj, rhs, Dt, Alpha)
+			fftS = fftn(rhs);
+			fftS = fftS ./ (1 + Alpha * Dt * ...
+					(obj.kx.^2 + obj.ky.^2 + obj.kz.^2).^2 );
+			val = real(ifftn(fftS));
+		end
+
+		% solve (Idt - alpha * Dt * Laplacian)^(-1) with GMRES preconditioned by FFT
+		function val = smoothDiffusionGMRES(obj, rhs, Dt, Alpha)
+			% operator to be solved
+			Op = obj.Idt - Alpha * Dt * obj.LLaplacian;
+			% reshape RHS into a colum vector
+			S = reshape(rhs, [obj.NumElt, 1]);
+			[val,~,~,~,~] = gmres(Op, S, [], 1e-12, 300, @mfun);
+			val = reshape(val, obj.Size);
+			% preconditioner
+			function y = mfun(S)
+				fftS = fftn(reshape(S, obj.Size));
+				fftS = fftS ./ (1 + Alpha * Dt * ...
+						(obj.kx.^2 + obj.ky.^2 + obj.kz.^2) );
+				y = real(ifftn(fftS));
+				y = reshape(y, [obj.NumElt, 1]);
+			end
+		end
+
+		% solve (Idt - alpha * Dt * Laplacian)^(-1) with GMRES preconditioned by FFT
+		function val = smoothDiffusionFFT(obj, rhs, Dt, Alpha)
+			fftS = fftn(rhs);
+			fftS = fftS ./ (1 + Alpha * Dt * ...
+					(obj.kx.^2 + obj.ky.^2 + obj.kz.^2) );
+			val = real(ifftn(fftS));
+		end
+
+
+	end
+
 end

@@ -1,5 +1,8 @@
-% test effects of osmotic pressure
+% make some videos
 
+iter = 50;
+
+pwd
 
 radius = 0.98; ra =2.0; xmax = radius*ra; xmin = -xmax; GridSize = [64,64,64];
 rd = 0.85;
@@ -24,7 +27,7 @@ domain2 = [...
 			];
 domain3 = [...
 			0,		pi/2,		alpha3,beta3;...
-			0,		-pi/2,		alpha3,-beta3;...
+			0,		-pi/2,		alpha3,beta3;...
 			];
 
 %domain = [domain1;domain2];
@@ -40,7 +43,7 @@ domain = domain3;
 %			pi,		0,			alpha1,beta1;...
 %			-pi/2,	0,			alpha1,beta1;...
 %			];
-%
+
 Pressure = - 200; ConsereVol = false;
 %ConsereVol = true;
 
@@ -55,7 +58,6 @@ KappaBLo = 1 * KappaB; % bending rigidity for Lo phase
 KappaL = 70; % isotropic line tension
 KappaG = 0; % difference in Gaussian bending rigidity: Ld - Lo
 
-iter = 1500;
 
 map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,100);
@@ -147,7 +149,7 @@ for i = 1:iter
 	time = time + Dt;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 % calculate local Lagrange multiplier
-	normalSpeedBendSmoothed = smoothFFT( map, NormalSpeedBend, Dt, ...
+	normalSpeedBendSmoothed = map.GD3.smoothFFT(NormalSpeedBend, Dt, ...
 			0.5*max(KappaB,KappaBLo) );
 	localArea = map.WENORK3Extend(localArea,100);
 	totalArea = map.surfaceIntegral(localArea);
@@ -162,13 +164,13 @@ for i = 1:iter
 	%	- MeanCurvature.*NormalBendSpeed;
 	%rhs = map.GD3.LimitField( ((localArea - 1)./localArea)/Dt, 0.01/Dt) ...
 	%	- MeanCurvature.*NormalSpeedBend;
-	rhs = map.GD3.LimitField( ((localArea - 1)./localArea)/Dt, 0.1/Dt) ...
-		- MeanCurvature.*normalSpeedBendSmoothed;
+	%rhs = map.GD3.LimitField( ((localArea - 1)./localArea)/Dt, 0.1/Dt) ...
+	%	- MeanCurvature.*normalSpeedBendSmoothed;
 	%rhs = - MeanCurvature.*NormalBendSpeed;
-	[localTension,residual] = localLagrangeMultiplier(map,rhs,Dt,Alpha);
-	localTension = map.WENORK3Extend(localTension,100);
+	%[localTension,residual] = localLagrangeMultiplier(map,rhs,Dt,Alpha);
+	%localTension = map.WENORK3Extend(localTension,100);
 	%residual = map.WENORK3Extend(residual,100);
-	%localTension = zeros(map.GD3.Size,'gpuArray');
+	localTension = zeros(map.GD3.Size,'gpuArray');
 
 	NormalSpeedBend = NormalSpeedBend - localTension .* MeanCurvature;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
@@ -223,14 +225,14 @@ for i = 1:iter
 	% now calculate normal Speed for both level sets
 	normalSpeed = Tension .* MeanCurvature - NormalSpeedBend + Pressure;
 	% regularize both speed fields
-	normalSpeedSmoothed = smoothFFT( map, normalSpeed.*map.FGradMag, Dt, ...
+	normalSpeedSmoothed = map.GD3.smoothFFT( normalSpeed.*map.FGradMag, Dt, ...
 			0.5*max(KappaB,KappaBLo) );
 	% it is import to use KappaBLo instead of KappaB 
 	%normalSpeedSmoothed = smoothGMRES(map, normalSpeed.*map.FGradMag, Dt, 0.5);
 	normalSpeedSmoothed = map.ENORK2Extend(normalSpeedSmoothed, 100);
 
 	AnormalSpeed = LineSpeedn + TensionPositive - TensionNegative;
-	AnormalSpeed = smoothFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
+	AnormalSpeed = map.GD3.smoothFFT(AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
 	%AnormalSpeed = smoothDiffusionFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
 	%AnormalSpeed = smoothGMRES(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
 	AnormalSpeed = map.AENORK2Extend(AnormalSpeed, 50, 100, 50); % reduce asymmteric error
@@ -265,7 +267,7 @@ for i = 1:iter
 	%localArea = imgaussfilt3(localArea, filterWidth); % fileter to remove high order error
 	%localArea = map.WENORK3Extend(localArea,100);
 	%localArea = smoothDiffusionFFT(map,localArea,Dt,10);
-	localArea = smoothDiffusionFFT(map,localArea,Dt,1);
+	localArea = map.GD3.smoothDiffusionFFT(localArea,Dt,1);
 	%localArea = map.WENORK3Extend(localArea,100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 
@@ -368,6 +370,7 @@ for i = 1:iter
 
 
 		if false 
+			FIG.InvertHardcopy = 'off'; % preseve background color
 			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
 		end
 	end
@@ -388,110 +391,6 @@ for i = 1:iter
 	end
 
 end
-
-% solve (Idt + alpha * Dt * BiLaplacian)^(-1) with GMRES preconditioned by FFT
-function normalSpeedSmoothed = smoothGMRES(map, NormalSpeed, Dt, Alpha)
-
-	% operator to be solved
-	Op = map.GD3.Idt + Alpha * Dt * map.GD3.LBiLaplacian;
-	% reshape RHS into a colum vector
-	S = reshape(NormalSpeed, [map.GD3.NumElt, 1]);
-
-	[normalSpeedSmoothed,~,~,~,~] = gmres(Op, S, [], 1e-12, 300, @mfun);
-	normalSpeedSmoothed = reshape(normalSpeedSmoothed, map.GD3.Size);
-
-	% preconditioner
-	function y = mfun(S)
-		fftS = fftn(reshape(S,map.GD3.Size));
-		fftS = fftS ./ (1 + Alpha * Dt * ...
-				(map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2).^2 );
-		y = real(ifftn(fftS));
-		y = reshape(y, [map.GD3.NumElt, 1]);
-	end
-
-end
-
-% solve (Idt + alpha * Dt * BiLaplacian)^(-1) with GMRES preconditioned by FFT
-function normalSpeedSmoothed = smoothFFT(map, NormalSpeed, Dt, Alpha)
-
-	fftS = fftn(NormalSpeed);
-	fftS = fftS ./ (1 + Alpha * Dt * ...
-			(map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2).^2 );
-	normalSpeedSmoothed = real(ifftn(fftS));
-	
-end
-
-
-% solve (Idt - alpha * Dt * Laplacian)^(-1) with GMRES preconditioned by FFT
-function normalSpeedSmoothed = smoothDiffusionGMRES(map, NormalSpeed, Dt, Alpha)
-
-	% operator to be solved
-	Op = map.GD3.Idt - Alpha * Dt * map.GD3.LLaplacian;
-	% reshape RHS into a colum vector
-	S = reshape(NormalSpeed, [map.GD3.NumElt, 1]);
-
-	[normalSpeedSmoothed,~,~,~,~] = gmres(Op, S, [], 1e-12, 300, @mfun);
-	normalSpeedSmoothed = reshape(normalSpeedSmoothed, map.GD3.Size);
-
-	% preconditioner
-	function y = mfun(S)
-		fftS = fftn(reshape(S,map.GD3.Size));
-		fftS = fftS ./ (1 + Alpha * Dt * ...
-				(map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2) );
-		y = real(ifftn(fftS));
-		y = reshape(y, [map.GD3.NumElt, 1]);
-	end
-
-end
-
-% solve (Idt - alpha * Dt * Laplacian)^(-1) with GMRES preconditioned by FFT
-function normalSpeedSmoothed = smoothDiffusionFFT(map, NormalSpeed, Dt, Alpha)
-
-	fftS = fftn(NormalSpeed);
-	fftS = fftS ./ (1 + Alpha * Dt * ...
-			(map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2) );
-	normalSpeedSmoothed = real(ifftn(fftS));
-	
-end
-
-% calculate local Lagrange multiplier constraining local area
-function [localTension,residual] = localLagrangeMultiplier(map,rhs,Dt,Alpha)
-
-	% operator to be solved
-	Op = map.GD3.Lxx + map.GD3.Lyy + map.GD3.Lzz - ...
-			(   map.GD3.SparseDiag(map.Nx .^2) * map.GD3.Lxx + ...
-				map.GD3.SparseDiag(map.Ny .^2) * map.GD3.Lyy + ...
-				map.GD3.SparseDiag(map.Nz .^2) * map.GD3.Lzz + ...
-				map.GD3.SparseDiag(map.Nx .* map.Ny) * map.GD3.Lxy * 2 + ...
-				map.GD3.SparseDiag(map.Ny .* map.Nz) * map.GD3.Lyz * 2 + ...
-				map.GD3.SparseDiag(map.Nz .* map.Nx) * map.GD3.Lzx * 2 ...
-			) ...
-		- map.GD3.SparseDiag(map.MeanCurvature.^2) ;
-	% right hand side
-	S = reshape(rhs, [map.GD3.NumElt, 1]);
-
-	% precompute division
-	KSquaredInverse = - 1 ./ (map.GD3.kx.^2 + map.GD3.ky.^2 + map.GD3.kz.^2 + Alpha);
-	% it seems that restart about {10,...,15} gives best speed
-	%tic
-	%[localTension,~,~,~,~] = gmres(Op, S, 11, 1e-6, 300, @mfun);
-	%localTension = gmres(Op, S, 11, 1e-6, 300, @mfun);
-	%localTension = gmres(Op, S, 20, 1e-1, 300, @mfun);
-	[localTension,~,~,~,~] = gmres(Op, S, 11, 1e-2, 300, @mfun);
-	%toc
-	residual = Op * localTension - S;
-
-	localTension = reshape(localTension, map.GD3.Size);
-	residual = reshape(residual, map.GD3.Size);
-
-	% preconditioner, Alpha = (c22+c33+c23+c32)/c11 as the mean squared MeanCurvature
-	function y = mfun(S)
-		fftS = fftn(reshape(S,map.GD3.Size)) .* KSquaredInverse;
-		y = reshape(real(ifftn(fftS)), [map.GD3.NumElt, 1]);
-	end
-
-end
-
 
 
 
