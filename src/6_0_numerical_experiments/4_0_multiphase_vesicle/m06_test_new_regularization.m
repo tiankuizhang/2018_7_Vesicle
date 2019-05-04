@@ -1,11 +1,9 @@
-% make some videos
+% test new approach to regularize A field
 
-iter = 50;
-
-pwd
+iter = 80;
 
 radius = 0.98; ra =2.0; xmax = radius*ra; xmin = -xmax; GridSize = [64,64,64];
-rd = 0.85;
+rd = 0.87;
 alpha1 = pi/9;
 beta1 = -1;
 alpha2 = pi/10;
@@ -32,8 +30,10 @@ domain3 = [...
 
 %domain = [domain1;domain2];
 %domain = domain2;
-domain = domain3;
-%domain = [0,pi/2,pi/6,pi/4];
+%domain = domain3;
+%domain = [0,pi/2,pi/5,-pi/4];
+domain = [0,pi/2,0.53,-pi/4]; % rd = 0.87
+
 %domain = domain1;
 %domain = [...
 %			0,		pi/2,		alpha1,beta1;...
@@ -131,11 +131,12 @@ for i = 1:iter
 
 	% line forces in n direction
 	%GeodesicCurvature = map.AENORK2Extend(map.GeodesicCurvature,50,100,50);
-	GeodesicCurvature = map.WENORK3Extend(map.GeodesicCurvature,100);
+	%GeodesicCurvature = map.WENORK3Extend(map.GeodesicCurvature,100);
+	GeodesicCurvature = map.GeodesicCurvature;
 	LineSpeedn =  KappaL * GeodesicCurvature ...
 				- KappaG * GaussianCurvature ...
 				- 0.5 * (KappaB - KappaBLo) * MeanCurvature.^2;
-	LineSpeedn = map.AENORK2Extend(LineSpeedn, 50, 100, 50);
+	%LineSpeedn = map.AENORK2Extend(LineSpeedn, 50, 100, 50);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 	% (minus) total force in N direction
 	NormalSpeedBend = NormalBendSpeed ...
@@ -236,7 +237,16 @@ for i = 1:iter
 	%AnormalSpeed = smoothDiffusionFFT(map, AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
 	%AnormalSpeed = smoothGMRES(map, AnormalSpeed.*map.AGradMag, Dt, 0.5);
 	AnormalSpeed = map.GD3.smoothFFT(AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
-	AnormalSpeed = map.AENORK2Extend(AnormalSpeed, 50, 100, 50); % reduce asymmteric error
+	%AnormalSpeed = map.AENORK2Extend(AnormalSpeed,50,100,50); % reduce asymmteric error
+
+	[rgNormal, rgSD] = map.ARegularization(false);
+	DN = 1.0;
+	Dn = 1.0;
+
+	AnormalSpeed = AnormalSpeed - DN * rgNormal - Dn * rgSD;
+	AnormalSpeed = map.GD3.smoothFFT(AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
+	%AnormalSpeed = AnormalSpeed - map.GD3.smoothFFT(DN * rgNormal + Dn * rgSD, ...
+	%		Dt, max(DN, Dn));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 % update c field  given normalSpeed and AnormalSpeed
 	%Divergence = residual - (localArea - 1) ./ (localArea * Dt) ...
@@ -278,7 +288,7 @@ for i = 1:iter
 	map.A = map.A - Dt * AnormalSpeed;
 	%map.A = map.WENORK3Extend(map.A, 50);
 	%map.A = map.WENORK3Reinitialization(map.A, 100);
-	map.A = map.WENORK3Extend(map.A, 50);
+	%map.A = map.WENORK3Extend(map.A, 50);
 	localArea = map.WENORK3Extend(localArea,100);
 
 	% do some bookkeeping
@@ -308,7 +318,7 @@ for i = 1:iter
 		titlestr = [ sprintf(' rd:%.3f, kd:%.1f,ko:%.1f,kl:%.1f,kg:%.1f ', ...
 				ReducedVolume,KappaB,KappaBLo,KappaL,KappaG) ];
 		title(titlestr)
-		Field = map.AHeaviside; Field(map.GD3.X>2*map.GD3.Ds)=nan;
+		Field = map.AHeaviside; %Field(map.GD3.X>2*map.GD3.Ds)=nan;
 		map.plotField(0,Field,0.0);colormap(gca,[1,0,0;0,0,1]);
 		%map.plotField(0,map.AHeaviside,0.0);colormap(gca,[1,0,0;0,0,1]);
 		colorbar off; 
@@ -384,11 +394,15 @@ for i = 1:iter
 
 		map.A = circshift(map.A, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		%map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
-		map.A = map.WENORK3ClosetPointSurfaceRedistance(map.A,20,30);
+		%map.A = map.WENORK3ClosetPointSurfaceRedistance(map.A,20,30);
 
 		% we need to shift every field!!!!
 		localArea = circshift(localArea, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		localArea = map.WENORK3Extend(localArea,100);
+	end
+
+	if mod(i,10)==0
+		%map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,10,0);
 	end
 
 end

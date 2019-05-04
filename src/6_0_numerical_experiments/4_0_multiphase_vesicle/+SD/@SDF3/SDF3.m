@@ -199,6 +199,7 @@ classdef SDF3 < handle
 		AsetCalculusToolBox(obj)
 		AsetCalculusToolBox4(obj)
 		GPUAsetCalculusToolBox(obj)
+		[rgNormal, rgSD] = ARegularization(obj, UseDoubleWellPotential);
 	end
 
 	methods
