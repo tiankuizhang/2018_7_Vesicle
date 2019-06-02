@@ -363,6 +363,17 @@ classdef GD3 < handle
 			mag = max(sqrt(vx.^2+vy.^2+vz.^2),1e-14);	
 		end
 
+		function val = GradDotGrad(obj, Field1, Field2)
+			[fx1,fy1,fz1] = obj.Gradient(Field1);
+			[fx2,fy2,fz2] = obj.Gradient(Field2);
+			val = fx1.*fx2 + fy1.*fy2 + fz1.*fz2;
+		end
+
+		function val = DotGrad(obj, fx1, fy1, fz1, Field2)
+			[fx2,fy2,fz2] = obj.Gradient(Field2);
+			val = fx1.*fx2 + fy1.*fy2 + fz1.*fz2;
+		end
+
 		function val = LimitField(obj,field,pos)
 			val = sign(field) .* min(pos, abs(field));
 		end

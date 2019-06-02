@@ -113,6 +113,7 @@ for i = 1:iter
 	MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);
 	GaussianCurvature = map.WENORK3Extend(map.GaussianCurvature,100);
 	MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(map.MeanCurvature); 
+	%MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(MeanCurvature); 
 	NormalBendSpeed = KappaBField .* ( MeanCurvatureSurfaceLaplacian + ...
 	 0.5 * MeanCurvature.^3 - 2 * MeanCurvature .* GaussianCurvature );
 	NormalBendSpeed = map.ENORK2Extend(NormalBendSpeed, 100);
