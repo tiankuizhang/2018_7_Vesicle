@@ -1,4 +1,4 @@
-% test new scheme to impose incompressibility for single phase vesicle
+% test new scheme to account for protein dependent properties for single phase vesicle
 % reduced volume is fixed
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
@@ -6,8 +6,8 @@ iteration = 1000;
 GridSize = [64,64,64]; ReducedVolume0 = 0.65; VesicleTYPE = "o"; ratio = 0.2;
 [x,y,z,F] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus
-C0 = 0.0; C1 = 0.0;
-Mu = 1000; % incompressibility of vesicle
+C0 = -0.0; C1 = -100; proteinCoverage = .1;
+Mu = 0; % incompressibility of vesicle
 CFLNumber = 0.1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
@@ -31,7 +31,7 @@ array_b = []; % bending energy
 array_c = []; % area compressibility
 
 localArea = ones(map.GD3.Size,'gpuArray');
-protein = zeros(map.GD3.Size,'gpuArray');
+protein = proteinCoverage * ones(map.GD3.Size,'gpuArray');
 for i = 0:iteration
 	map.GPUsetCalculusToolBox
 
@@ -110,17 +110,30 @@ for i = 0:iteration
 	localAreaTimeStep = map.GD3.smoothDiffusionFFT(laFlux, Dt, maxTv);
 	localAreaTimeStep = map.WENORK3Extend(localAreaTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% protein tension
+%	proTension = - 0.5 * Kappa1 * protein .* (MeanCurvature - SC).^2 ...
+%					+ C1 * protein .* Kappa .* (MeanCurvature - SC);
+%% divergence of protein motion field
+%	proDivergence = Divergence ...
+%		+ map.GD3.Laplacian(proTension) - MeanCurvature.^2 .* proTension;
+%% additional tangential motion
+%	[ptvx,ptvy,ptvz] = map.GD3.Gradient(proTension);
+%% (minus) time rate of change for protein field
+%	proFlux = protein .* proDivergence ...
+%		+ map.GD3.DotGrad(tvx+ptvx, tvy+ptvy, tvz+ptvz, protein);
+%	proteinTimeStep = map.GD3.smoothDiffusionFFT(proFlux, Dt, maxTv);
+%	proteinTimeStep = map.WENORK3Extend(proteinTimeStep, 100);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % protein tension
 	proTension = - 0.5 * Kappa1 * protein .* (MeanCurvature - SC).^2 ...
 					+ C1 * protein .* Kappa .* (MeanCurvature - SC);
 % divergence of protein motion field
-	proDivergence = Divergence ...
-		+ map.GD3.Laplacian(proTension) - MeanCurvature.^2 .* proTension;
+	proDivergence = map.GD3.Laplacian(proTension);
 % additional tangential motion
 	[ptvx,ptvy,ptvz] = map.GD3.Gradient(proTension);
 % (minus) time rate of change for protein field
 	proFlux = protein .* proDivergence ...
-		+ map.GD3.DotGrad(tvx+ptvx, tvy+ptvy, tvz+ptvz, protein);
+		+ map.GD3.DotGrad(ptvx, ptvy, ptvz, protein);
 	proteinTimeStep = map.GD3.smoothDiffusionFFT(proFlux, Dt, maxTv);
 	proteinTimeStep = map.WENORK3Extend(proteinTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -128,7 +141,11 @@ for i = 0:iteration
 	localArea = localArea - Dt * localAreaTimeStep;
 	localArea = localArea * InitialArea / map.surfaceIntegral(localArea); 
 	protein = protein - Dt * proteinTimeStep;
-	map.F = map.F - Dt * levelSetTimeStep;
+	protein = map.GD3.smoothDiffusionFFT(protein, Dt, 1.0);
+	protein(protein<0) = 0;
+	protein = protein * InitialArea * proteinCoverage / map.surfaceIntegral(protein); 
+	%protein = protein - map.surfaceIntegral(protein)/InitialArea + proteinCoverage;
+%	map.F = map.F - Dt * levelSetTimeStep;
 	map.setDistance;
 
 	localArea = map.WENORK3Extend(localArea, 100);
@@ -148,22 +165,6 @@ for i = 0:iteration
 	if i>1
 		clf(FIG)
 
-		subplot(2,2,[1,3])
-		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ...
-			ReducedVolume,Mu) ];
-		%map.plotField(0,localArea,0.0)
-		map.plotField(0,protein,0.0)
-		map.GD3.DrawBox
-
-		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
-		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
-		zticks([map.GD3.BOX(5),0,map.GD3.BOX(6)])
-
-		axis vis3d equal
-		set(gca,'Color','k')
-		zoom(1.0)
-		title(titleStr)
-
 		subplot(2,2,4)
 		area(array_t, [array_b array_c]);
 		titleStr = [ sprintf('%5d: %.3e, ene_b:%.3f, ene_c:%.3f',i,time,ene_b,ene_c) ];
@@ -180,13 +181,31 @@ for i = 0:iteration
 				sign(x_shift),sign(y_shift),sign(z_shift))];
 		title(titleStr)
 
+		subplot(2,2,[1,3])
+		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ...
+			ReducedVolume,Mu) ];
+		%map.plotField(0,localArea,0.0)
+		map.plotField(0,protein,0.0)
+		%map.plotField(0,MeanCurvature-SC,0.0)
+		map.GD3.DrawBox
+
+		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
+		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
+		zticks([map.GD3.BOX(5),0,map.GD3.BOX(6)])
+
+		axis vis3d equal
+		set(gca,'Color','k')
+		title(titleStr)
+		zoom(2.0)
+
+
 		drawnow
 	end
 
 	if mod(i,5)==0
 		map.F = circshift(map.F, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		map.setDistance
-		map.F = map.WENO5RK3Reinitialization(map.F,200);
+		%map.F = map.WENO5RK3Reinitialization(map.F,200);
 
 		localArea = circshift(localArea, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		localArea = map.WENORK3Extend(localArea,100);
