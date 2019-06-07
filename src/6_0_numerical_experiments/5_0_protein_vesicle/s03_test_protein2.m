@@ -53,16 +53,19 @@ for i = 0:iteration
 	GaussianCurvature = map.WENORK3Extend(map.GaussianCurvature,100);
 	localTension = 0.5*Mu .* ... % due to incompressibility
 		( (1.0./localArea - 1).*(3.0./localArea - 1) + (1 - localArea.^2) );
+	proTension = - 0.5 * Kappa1 * protein .* (MeanCurvature - SC).^2 ...
+					+ C1 * protein .* Kappa .* (MeanCurvature - SC);
 	% (minus) bending forces
 	NormalBendSpeed = map.GD3.Laplacian( Kappa.*(MeanCurvature-SC) ) + ...
 		+ Kappa .* (0.5*MeanCurvature.^3 - 2*MeanCurvature.*GaussianCurvature ...
 					 + 2*SC.*GaussianCurvature - 0.5*SC.^2.*MeanCurvature) ...
-		- MeanCurvature .* localTension ;
+		- MeanCurvature .* (localTension + proTension) ;
 	NormalBendSpeed = map.ENORK2Extend(NormalBendSpeed,100);
 	% tangential forces
 	[tempx1,tempy1,tempz1] = map.GD3.Gradient(Kappa);
 	[tempx2,tempy2,tempz2] = map.GD3.Gradient(Kappa.*SC);
-	[tempx3,tempy3,tempz3] = map.GD3.Gradient(0.5*Kappa.*SC.^2 + localTension);
+	[tempx3,tempy3,tempz3] = map.GD3.Gradient( ...
+			0.5*Kappa.*SC.^2 + localTension + proTension);
 	tvx = 0.5 * MeanCurvature.^2 .* tempx1 - MeanCurvature .* tempx2 + tempx3;
 	tvy = 0.5 * MeanCurvature.^2 .* tempy1 - MeanCurvature .* tempy2 + tempy3;
 	tvz = 0.5 * MeanCurvature.^2 .* tempz1 - MeanCurvature .* tempz2 + tempz3;
@@ -102,7 +105,7 @@ for i = 0:iteration
 				+ 0.5*MeanCurvature.^2 .* map.GD3.Laplacian(Kappa) ...
 				- map.GD3.GradDotGrad(MeanCurvature, Kappa.*SC) ...
 				- MeanCurvature .* map.GD3.Laplacian(Kappa.*SC) ...
-				+ map.GD3.Laplacian(0.5*Kappa.*SC.^2 + localTension);
+				+ map.GD3.Laplacian(0.5*Kappa.*SC.^2 + localTension + proTension);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (minus) time rate of change for localArea, i.e., sum of numerical fluxs
 	laFlux = localArea .* Divergence + map.GD3.DotGrad(tvx,tvy,tvz,localArea);
@@ -110,23 +113,16 @@ for i = 0:iteration
 	localAreaTimeStep = map.GD3.smoothDiffusionFFT(laFlux, Dt, maxTv);
 	localAreaTimeStep = map.WENORK3Extend(localAreaTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% protein tension
-%	proTension = - 0.5 * Kappa1 * protein .* (MeanCurvature - SC).^2 ...
-%					+ C1 * protein .* Kappa .* (MeanCurvature - SC);
-%% divergence of protein motion field
-%	proDivergence = Divergence ...
-%		+ map.GD3.Laplacian(proTension) - MeanCurvature.^2 .* proTension;
-%% additional tangential motion
+% divergence of protein motion field
+%	proDivergence = Divergence + map.GD3.Laplacian(proTension) ;
+% additional tangential motion
 %	[ptvx,ptvy,ptvz] = map.GD3.Gradient(proTension);
-%% (minus) time rate of change for protein field
+% (minus) time rate of change for protein field
 %	proFlux = protein .* proDivergence ...
 %		+ map.GD3.DotGrad(tvx+ptvx, tvy+ptvy, tvz+ptvz, protein);
 %	proteinTimeStep = map.GD3.smoothDiffusionFFT(proFlux, Dt, maxTv);
 %	proteinTimeStep = map.WENORK3Extend(proteinTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% protein tension
-	proTension = - 0.5 * Kappa1 * protein .* (MeanCurvature - SC).^2 ...
-					+ C1 * protein .* Kappa .* (MeanCurvature - SC);
 % divergence of protein motion field, only tangential effects are accounted for
 	proDivergence = map.GD3.Laplacian(proTension);
 % additional tangential motion
@@ -139,6 +135,7 @@ for i = 0:iteration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % time step the system
 	localArea = localArea - Dt * localAreaTimeStep;
+	localArea = map.GD3.smoothDiffusionFFT(localArea, Dt, 1.0);
 	localArea = localArea * InitialArea / map.surfaceIntegral(localArea); 
 	protein = protein - Dt * proteinTimeStep;
 	protein = map.GD3.smoothDiffusionFFT(protein, Dt, 1.0);

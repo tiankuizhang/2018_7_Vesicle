@@ -390,6 +390,12 @@ classdef GD3 < handle
 	end
 	methods
 		[WENO_back_x, WENO_fore_x, WENO_back_y, WENO_fore_y, WENO_back_z, WENO_fore_z] = GPUWENODerivative(obj, Field);
+		function val = WENODotGrad(obj, vx, vy, vz, field)
+			[xL,xR,yB,yF,zD,zU] = obj.GPUWENODerivative(field);
+			val = 	min(0.0,vx) .* xR + max(0.0,vx) .* xL + ...
+					min(0.0,vy) .* yF + max(0.0,vy) .* yB + ...
+					min(0.0,vz) .* zU + max(0.0,vz) .* zD ;
+		end
 	end
 
 	methods

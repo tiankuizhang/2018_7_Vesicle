@@ -8,7 +8,7 @@ GridSize = [64,64,64]; ReducedVolume0 = 0.65; VesicleTYPE = "o"; ratio = 0.2;
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus
 C0 = 0.0; C1 = 0.0;
 Mu = 1000; % incompressibility of vesicle
-CFLNumber = 0.1;
+CFLNumber = .1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
 Grid = SD.GD3(x,y,z);
@@ -52,7 +52,7 @@ for i = 0:iteration
 	MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);
 	GaussianCurvature = map.WENORK3Extend(map.GaussianCurvature,100);
 	localTension = 0.5*Mu .* ... % due to incompressibility
-		( (1.0./localArea - 1).*(3.0./localArea - 1) + (1 - localArea).^2 );
+		( (1.0./localArea - 1).*(3.0./localArea - 1) + (1 - localArea.^2) );
 	% (minus) bending forces
 	NormalBendSpeed = map.GD3.Laplacian( Kappa.*(MeanCurvature-SC) ) + ...
 		+ Kappa .* (0.5*MeanCurvature.^3 - 2*MeanCurvature.*GaussianCurvature ...
@@ -126,6 +126,7 @@ for i = 0:iteration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % time step the system
 	localArea = localArea - Dt * localAreaTimeStep;
+	localArea = map.GD3.smoothDiffusionFFT(localArea, Dt, 1.0);
 	localArea = localArea * InitialArea / map.surfaceIntegral(localArea); 
 	protein = protein - Dt * proteinTimeStep;
 	map.F = map.F - Dt * levelSetTimeStep;
@@ -151,8 +152,8 @@ for i = 0:iteration
 		subplot(2,2,[1,3])
 		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ...
 			ReducedVolume,Mu) ];
-		%map.plotField(0,localArea,0.0)
-		map.plotField(0,protein,0.0)
+		map.plotField(0,localArea,0.0)
+		%map.plotField(0,protein,0.0)
 		map.GD3.DrawBox
 
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
