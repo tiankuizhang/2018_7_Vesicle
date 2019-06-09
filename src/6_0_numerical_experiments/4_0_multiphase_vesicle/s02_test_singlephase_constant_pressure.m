@@ -4,12 +4,12 @@
 %TYPE="p"; ratio = 0.2; rd = 0.75;PresetP = -2000; GridSize = [64,64,96]; ConserveRAD = false; PresetTDA = 0;
 
 % prolate --> pear --> pear pinching
-%TYPE="p"; ratio = 0.35; rd = 0.75; PresetP = 700; GridSize = [64,64,64]; ConserveRAD = true;
+TYPE="p"; ratio = 0.35; rd = 0.75; PresetP = 700; GridSize = [64,64,64]; ConserveRAD = true;
 
 %TYPE = "p"; ratio = 0.35; rd = 0.75; PresetP = 500; GridSize = [64,64,64];
 
 % oblate --> sphere
-TYPE="o";ratio=0.25; rd = 0.75; PresetP = -100; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 50;
+%TYPE="o";ratio=0.25; rd = 0.75; PresetP = -100; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 50;
 
 % oblate --> torus
 %TYPE="o";ratio=0.25; rd = 0.75; PresetP = -1000; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 13;
