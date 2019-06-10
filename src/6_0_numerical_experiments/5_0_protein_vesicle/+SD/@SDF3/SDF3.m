@@ -65,6 +65,7 @@ classdef SDF3 < handle
 		setCalculustToolBoxWENO(obj)
 		GPUsetCalculusToolBox(obj)  
 		setDistance(obj) % used after F modified and before any use of xpr etc.
+		rgSD = FRegularization(obj, UseDoubleWellPotential)
 	end
 
 	methods
