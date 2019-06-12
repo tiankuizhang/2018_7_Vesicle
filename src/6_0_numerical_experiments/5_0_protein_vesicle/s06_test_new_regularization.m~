@@ -8,8 +8,7 @@ Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus
 C0 = 0; C1 = -1; proteinCoverage = 1.0;
 Mu = 1000; % incompressibility of vesicle
 CFLNumber = 0.2;
-MinimumTimeStep = 1 * 1e-6; % for downward pear
-%MinimumTimeStep = 1 * 1e-5; % for upward pear
+MinimumTimeStep = 1 * 1e-5;
 RelativeTimeScale = 0.1; % relative drag coefficient for protein motion
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ReducedVolume0 = 0.75; VesicleTYPE = "p"; ratio = 0.35; PresetP = 700; ConserveRAD = true;
@@ -224,12 +223,12 @@ for i = 0:iteration
 	if i>1 && mod(i,5)==0
 		clf(FIG)
 
-		subplot(2,4,[7 8])
+		subplot(2,2,4)
 		area(array_t, [array_b array_c]);
 		titleStr = [ sprintf('%5d: %.3e, ene_b:%.3f, ene_c:%.3f',i,time,ene_b,ene_c) ];
 		title(titleStr)
 
-		subplot(2,4,4)
+		subplot(2,2,2)
 		xslice = ceil(map.GD3.ncols / 2);
 		F = reshape(map.F(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
 		Y = reshape(map.GD3.Y(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
@@ -240,7 +239,7 @@ for i = 0:iteration
 				sign(x_shift),sign(y_shift),sign(z_shift))];
 		title(titleStr)
 
-		ax1 = subplot(2,4,[1 2 5 6]);
+		ax1 = subplot(2,2,1);
 		titleStr = [ sprintf(' pC:%.3f, RTS:%.3f ', proteinCoverage,RelativeTimeScale) ];
 		%map.plotField(0,localArea,0.0)
 		map.plotField(0,protein,0.0)
@@ -254,10 +253,9 @@ for i = 0:iteration
 		title(titleStr)
 		%zoom(2.0)
 		%set(ax1,'xlim',[-0.5,0.5],'ylim',[-0.5,0.5],'zlim',[-0.5,0.5])
-		set(ax1,'xlim',[-0.80,0.80],'ylim',[-0.80,0.80],'zlim',[-0.80,0.80])
 
 		%subplot(2,2,[1,3])
-		ax3 = subplot(2,4,3);
+		ax3 = subplot(2,2,3);
 		zoom reset
 		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
 		map.plotField(0,localArea,0.0)
@@ -271,7 +269,7 @@ for i = 0:iteration
 		set(gca,'Color','k')
 		title(titleStr)
 
-		set(ax3,'xlim',[-0.80,0.80],'ylim',[-0.80,0.80],'zlim',[-0.80,0.80])
+		%set(ax3,'xlim',[-0.5,0.5],'ylim',[-0.5,0.5],'zlim',[-0.5,0.5])
 		%zoom(ax3,2.0)
 		%zoom(ax1,2.0)
 		%linkaxes([ax1,ax3],'xyz');
@@ -281,7 +279,6 @@ for i = 0:iteration
 	end
 
 	if mod(i,5)==0
-		x_shift = 0; y_shift = 0; z_shift = 0;
 		map.F = circshift(map.F, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		map.setDistance
 		%if mod(i,20)==0
