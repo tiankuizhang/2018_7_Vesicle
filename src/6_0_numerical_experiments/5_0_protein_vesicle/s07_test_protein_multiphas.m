@@ -36,6 +36,45 @@ expectedVolume = volume;
 AreaNegative = map.AcalArea;
 AreaPositive = InitialArea - AreaNegative;
 
+fprintf('initial area: %4.5f, expected volume: %4.5f\n', InitialArea, expectedVolume)
+% name and size of figure
+FIG = figure('Name','MultiPhase Vesicle','Position',[10 10 1600 800])
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% dynamics
+time = 0;
+array_t = [];	% time array
+array_ld = [];	% bending energy for ld phase
+array_lo = [];	% bending energy for lo phase
+array_c = [];	% area incompressibility
+array_el = [];	% line energy
+array_eg = [];	% Guassian bending energy
+
+localArea = ones(map.GD3.Size,'gpuArray');
+protein = zeros(map.GD3.Size,'gpuArray');
+for i = 1:iteration
+	map.GPUsetCalculusToolBox
+	map.GPUAsetCalculusToolBox
+
+	z_shift = - (map.Box(5) + map.Box(6));
+	y_shift = - (map.Box(3) + map.Box(4));
+	x_shift = - (map.Box(1) + map.Box(2));
+
+	CurrentArea = map.calArea;
+	DiffArea = 100 * (CurrentArea - InitialArea)/InitialArea;
+	CurrentVolume = map.calVolume;
+	DiffVolume = 100 * (CurrentVolume - expectedVolume) / expectedVolume;
+	ReducedVolume = (3*CurrentVolume/4/pi) * (4*pi/CurrentArea)^(3/2);
+	CurrentNegativeArea = map.AcalArea;
+	CurrentPositiveArea = CurrentArea - CurrentNegativeArea;
+	DiffPhaseArea = 100 * (CurrentNegativeArea - AreaNegative) / AreaNegative; 
+
+	KappaLd = Kappa0 + Kappa1 * protein;
+	KappaLo = Kappa0Lo + Kappa1Lo * protein;
+	Kappa = map.BivalueField(KappaLd, KappaLo);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+	
+end
 
 
 

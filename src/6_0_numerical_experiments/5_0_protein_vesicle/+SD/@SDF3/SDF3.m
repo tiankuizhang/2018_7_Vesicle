@@ -222,7 +222,7 @@ classdef SDF3 < handle
 			integral = sum(field(mask).*obj.DiracDelta(mask).*obj.FGradMag(mask).*(1-obj.AHeaviside(mask)))*obj.GD3.Ds.^3;
 		end
 		function val = BivalueField(obj, valNeg, valPos)
-			val = valPos * obj.AHeaviside + valNeg * (1 - obj.AHeaviside) ;
+			val = valPos .* obj.AHeaviside + valNeg .* (1 - obj.AHeaviside) ;
 			%val = valNeg * ones(obj.GD3.Size,'gpuArray');
 			%val(obj.A>0) = valPos;
 		end
