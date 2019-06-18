@@ -146,6 +146,8 @@ for i = 0:iteration
 	maxKappa = max(abs(Kappa(mask)));
 	levelSetTimeStep = normalSpeed.*map.FGradMag - 1.0 * map.FRegularization(true);
 	levelSetTimeStep = map.GD3.smoothFFT(levelSetTimeStep, Dt, maxKappa);
+	% do not forget to extend this term
+	levelSetTimeStep = map.ENORK2Extend(levelSetTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % divergence of the flow field
 	%normalSpeedSmoothed = map.GD3.smoothFFT(normalSpeed, Dt, maxKappa);

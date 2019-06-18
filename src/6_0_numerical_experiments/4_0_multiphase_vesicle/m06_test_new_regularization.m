@@ -112,8 +112,8 @@ for i = 1:iter
 	KappaBField = map.BivalueField(KappaB, KappaBLo); 
 	MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);
 	GaussianCurvature = map.WENORK3Extend(map.GaussianCurvature,100);
-	MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(map.MeanCurvature); 
-	%MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(MeanCurvature); 
+	%MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(map.MeanCurvature); 
+	MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(MeanCurvature); 
 	NormalBendSpeed = KappaBField .* ( MeanCurvatureSurfaceLaplacian + ...
 	 0.5 * MeanCurvature.^3 - 2 * MeanCurvature .* GaussianCurvature );
 	NormalBendSpeed = map.ENORK2Extend(NormalBendSpeed, 100);
@@ -209,6 +209,7 @@ for i = 1:iter
 %		ConsereVol = true;
 %		KappaL = 70;
 %	end
+	
 	if ConsereVol 
 		TP = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
 		Pressure = TP(1);
@@ -222,6 +223,11 @@ for i = 1:iter
 		Tension = map.BivalueField(TensionNegative, TensionPositive);
 	end
 %
+	if i == 2
+		[c11,c12,c13;c21,c22,c23;c31,c32,c33] 
+		[s1;s2;s3]
+		keyboard
+	end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 	% now calculate normal Speed for both level sets
@@ -320,7 +326,8 @@ for i = 1:iter
 				ReducedVolume,KappaB,KappaBLo,KappaL,KappaG) ];
 		title(titlestr)
 		Field = map.AHeaviside; %Field(map.GD3.X>2*map.GD3.Ds)=nan;
-		map.plotField(0,Field,0.0);colormap(gca,[1,0,0;0,0,1]);
+		map.plotField(0,Field,0.0);
+		colormap(gca,[1,0,0;0,0,1]);
 		%map.plotField(0,map.AHeaviside,0.0);colormap(gca,[1,0,0;0,0,1]);
 		colorbar off; 
 		%map.plotSurface(0,1,'Green','black');textZ = gather(map.GD3.zmin);
