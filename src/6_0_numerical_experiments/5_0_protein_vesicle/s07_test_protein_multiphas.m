@@ -1,22 +1,23 @@
 % test new scheme to account for protein dependent properties for mutiphase vesicle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
-iteration = 5000; relaxIter = 1000;
+iteration = 5000; relaxIter = 200;
 GridSize = [64,64,64]; 
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus for Ld phase
-Kappa0Lo = 1.0; Kappa1Lo = 0.0; % bending modulus for Lo phase
-KappaL = 70; % isotropic line tension
-KappaG = 0; % difference in Gaussian bending rigidity: Ld - Lo
+Kappa0Lo = 5.0; Kappa1Lo = 0.0; % bending modulus for Lo phase
+KappaL = 30; % isotropic line tension
+KappaG = 3.6; % difference in Gaussian bending rigidity: Ld - Lo
 C0 = 0; C1 = -1; proteinCoverage = 1.0;
 Mu = 1000; % incompressibility of vesicle
 CFLNumber = 1.0;
 MinimumTimeStep = 0.0;
-RelativeTimeScale = 0.1; % relative drag coefficient for protein motion
+RelativeTimeScale = 1; % relative drag coefficient for protein motion
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-radius = 0.98; ra =2.0; xmax = radius*ra; xmin = -xmax; rd = 0.87;
-domain = [0,pi/2,0.53,-pi/4];
-Pressure = - 200; ConsereVol = false;
-%ConsereVol = true;
+radius = 0.98; ra =2.0; xmax = radius*ra; xmin = -xmax; rd = 0.98;
+raLd = 0.067; alpha = acos(1-2*raLd);
+domain = [0,pi/2,alpha,-pi/4];
+%Pressure = - 200; ConsereVol = false;
+ConsereVol = true;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
 [x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere2([xmin,xmax],GridSize,radius,rd,domain);
@@ -137,7 +138,7 @@ for i = 1:iteration
 	c33 = map.surfaceIntegral(MeanCurvature.^2 .* map.AHeaviside) ;
 	c32 = c33 + c22 + c23;
 
-	tmp = map.GD3.LimitField(expectedVolume - CurrentVolume, 0.001*InitialVolume);
+	tmp = map.GD3.LimitField(expectedVolume - CurrentVolume, 0.01*InitialVolume);
 	s1 = tmp / Dt + map.surfaceIntegral(NormalSpeedBend);
 
 	sLine = map.LineIntegral(LineSpeedn);
@@ -163,7 +164,7 @@ for i = 1:iteration
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % the complete normal speed 
-	normalSpeed = Tension .* MeanCurvature + Pressure - NormalBendSpeed;
+	normalSpeed = Tension .* MeanCurvature + Pressure - NormalSpeedBend;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (minus) time rate of change for the level set function
 	maxKappa = max(abs(Kappa(mask)));
@@ -209,6 +210,7 @@ for i = 1:iteration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % time step the system
 	if i == relaxIter
+		expectedVolume = InitialVolume * 0.90;
 		localArea = ones(map.GD3.Size,'gpuArray');
 		protein = proteinCoverage * ones(map.GD3.Size,'gpuArray');
 		MinimumTimeStep = 1 * 1e-6;
@@ -219,7 +221,7 @@ for i = 1:iteration
 
 		protein = protein - Dt * proteinTimeStep;
 		maskDepleted = protein < 0;
-		protein(maskDepleted) = protein(maskDepleted) * 0.9;
+		protein(maskDepleted) = protein(maskDepleted) * 0.1;
 		protein = map.GD3.smoothDiffusionFFT(protein, Dt, 10.0);
 		protein = map.WENORK3Extend(protein, 100);
 		%protein(protein<0) = 0;
@@ -277,11 +279,12 @@ for i = 1:iteration
 		titlestr = [sprintf('shift:(%1d,%1d,%1d)',sign(x_shift),sign(y_shift),sign(z_shift))];
 		title(titlestr)
 
-		%ax1 = subplot(2,4,[1 2 5 6]);
-		ax7 = subplot(2,4,7);
-		titleStr = [ sprintf(' pC:%.3f, RTS:%.3f ', proteinCoverage,RelativeTimeScale) ];
+		ax1 = subplot(2,4,[1 2 5 6]);
+		%ax7 = subplot(2,4,7);
+		titleStr = [ sprintf('P pC:%.3f, RTS:%.3f ', proteinCoverage,RelativeTimeScale) ];
 		%map.plotField(0,localArea,0.0)
 		map.plotField(0,protein,0.0)
+		colormap(gca,[parula]); caxis([0 2])
 		%map.plotField(0,MeanCurvature-SC,0.0)
 		map.GD3.DrawBox
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
@@ -290,16 +293,12 @@ for i = 1:iteration
 		axis vis3d equal
 		set(gca,'Color','k')
 		title(titleStr)
-		%zoom(2.0)
-		%set(ax1,'xlim',[-0.5,0.5],'ylim',[-0.5,0.5],'zlim',[-0.5,0.5])
-		%set(ax1,'xlim',[-0.80,0.80],'ylim',[-0.80,0.80],'zlim',[-0.80,0.80])
 
 		ax3 = subplot(2,4,3);
 		zoom reset
-		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
+		titleStr = [ sprintf('LA rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
 		map.plotField(0,localArea,0.0)
-		%map.plotField(0,protein,0.0)
-		%map.plotField(0,MeanCurvature-SC,0.0)
+		colormap(gca,[parula]); caxis([0.9 1.1])
 		map.GD3.DrawBox
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
 		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
@@ -308,13 +307,12 @@ for i = 1:iteration
 		set(gca,'Color','k')
 		title(titleStr)
 
-		%ax7 = subplot(2,4,7);
-		ax1 = subplot(2,4,[1 2 5 6]);
+		%ax1 = subplot(2,4,[1 2 5 6]);
+		ax7 = subplot(2,4,7);
 		zoom reset
 		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
-		map.plotField(0,map.AHeaviside,0.0); colormap(gca,[1,0,0;0,0,1]); colorbar off; 
-		%map.plotField(0,protein,0.0)
-		%map.plotField(0,MeanCurvature-SC,0.0)
+		map.plotField(0,map.AHeaviside,0.0); 
+		colormap(gca,[1,0,0;0,0,1]); colorbar off; 
 		map.GD3.DrawBox
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
 		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
@@ -322,12 +320,6 @@ for i = 1:iteration
 		axis vis3d equal
 		set(gca,'Color','k')
 		title(titleStr)
-
-		%set(ax3,'xlim',[-0.80,0.80],'ylim',[-0.80,0.80],'zlim',[-0.80,0.80])
-		%zoom(ax3,2.0)
-		%zoom(ax1,2.0)
-		%linkaxes([ax1,ax3],'xyz');
-		%linkprop([ax1,ax3],'XLim','YLim','ZLim');
 
 		drawnow
 
@@ -342,7 +334,7 @@ for i = 1:iteration
 		%end
 
 		map.A = circshift(map.A, [sign(y_shift),sign(x_shift),sign(z_shift)]);
-		map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
+%		map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
 
 		localArea = circshift(localArea, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		localArea = map.WENORK3Extend(localArea,100);
