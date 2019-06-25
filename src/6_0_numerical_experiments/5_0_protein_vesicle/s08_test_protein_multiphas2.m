@@ -41,28 +41,32 @@ domain3 = [...
 radius = 0.98; ra =2.0; xmax = radius*ra; xmin = -xmax; 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % two domain pinch
-%rd = 0.91;
-%raLd = 0.07; alpha = acos(1-2*raLd);
-%domain = [0,pi/2,alpha,-pi/4];
-%%Pressure = - 200; ConsereVol = false;
-%ConsereVol = true;
-%CFLNumber = 1.0;
+rd = 0.91;
+raLd = 0.07; alpha0 = acos(1-2*raLd);
+domain = [0,pi/2,alpha0,-pi/4];
+%Pressure = - 200; ConsereVol = false;
+ConsereVol = true;
+CFLNumber = 1.0;
+Alpha = 0.6;
+iteration = 200; shotF = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % multidomain pinch, collision and separate
-%rd = 0.80;
+%rd = 0.75;
 %domain = domain2;
 %%Pressure = - 200; ConsereVol = false;
 %ConsereVol = true;
 %CFLNumber = 1;
+%Alpha = 0.6;
+%iteration = 500; shotF = 2;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % multidomain pinching without collision
-rd = 0.80;
-domain = domain2;
-Pressure = - 200; ConsereVol = false;
-%ConsereVol = true;
-CFLNumber = 1;
-Alpha = 0.6;
-iteration = 1000; shotF = 2;
+%rd = 0.80;
+%domain = domain2;
+%Pressure = - 200; ConsereVol = false
+%%ConsereVol = true;
+%CFLNumber = 1;
+%Alpha = 0.6;
+%iteration = 1000; shotF = 2;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % multidomain pinching without collision
 %rd = 0.80;

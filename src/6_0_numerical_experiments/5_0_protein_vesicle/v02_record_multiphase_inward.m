@@ -1,7 +1,11 @@
 % test new scheme to account for protein dependent properties for mutiphase vesicle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, 'onedomain_inward_budding');
+simu.simulationStart
+pwd
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
-iteration = 5000; 
+iteration = 2200; 
 relaxIterC = 5000;
 relaxIterP = 5000;
 GridSize = [64,64,64]; 
@@ -346,6 +350,11 @@ for i = 1:iteration
 		%set(ax1,'xlim',[-1.2,1.2],'ylim',[-1.2,1.2],'zlim',[-1.2,1.2])
 
 		drawnow
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		if true 
+			FIG.InvertHardcopy = 'off'; % preseve background color
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
 
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -369,6 +378,8 @@ for i = 1:iteration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
 
+simu.simulationEnd
+SD.NE.processImage(60,'multidomain_inward')
 
 
 
