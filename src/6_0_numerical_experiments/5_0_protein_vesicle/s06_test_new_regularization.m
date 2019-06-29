@@ -2,15 +2,17 @@
 % reduced volume is fixed
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
-iteration = 5000; relaxIter = 1000;
+iteration = 5000; relaxIter = 1200;
 GridSize = [64,64,64]; 
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus
-C0 = 0; C1 = -1; proteinCoverage = 1.0;
-Mu = 1000; % incompressibility of vesicle
+C0 = -0.0; C1 = -1.0; proteinCoverage = 1.0;
+Mu = .0; % incompressibility of vesicle
 CFLNumber = 0.2;
 MinimumTimeStep = 1 * 1e-6; % for downward pear
 %MinimumTimeStep = 1 * 1e-5; % for upward pear
-RelativeTimeScale = 0.1; % relative drag coefficient for protein motion
+MinimumTimeStep2 = 1 * 1e-6; % minimum time step after adding protein
+%MinimumTimeStep2 = 0.00;
+RelativeTimeScale = 1.0; % relative drag coefficient for protein motion
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ReducedVolume0 = 0.75; VesicleTYPE = "p"; ratio = 0.35; PresetP = 700; ConserveRAD = true;
 %ReducedVolume0 = 0.8; VesicleTYPE = "o"; ratio = 0.2; ConserveRAD = false; C0 = 13;
@@ -192,14 +194,15 @@ for i = 0:iteration
 	if i == relaxIter
 		localArea = ones(map.GD3.Size,'gpuArray');
 		protein = proteinCoverage * ones(map.GD3.Size,'gpuArray');
-		MinimumTimeStep = 1 * 1e-6;
+		MinimumTimeStep = MinimumTimeStep2;
+		keyboard
 	elseif i >relaxIter
 		localArea = localArea - Dt * localAreaTimeStep;
 		localArea = map.GD3.smoothDiffusionFFT(localArea, Dt, 10.0);
 		localArea = localArea * InitialArea / map.surfaceIntegral(localArea); 
 		protein = protein - Dt * proteinTimeStep;
 		maskDepleted = protein < 0;
-		protein(maskDepleted) = protein(maskDepleted) * 0.9;
+		protein(maskDepleted) = protein(maskDepleted) * 0.5;
 		protein = map.GD3.smoothDiffusionFFT(protein, Dt, 10.0);
 		protein = map.WENORK3Extend(protein, 100);
 		%protein(protein<0) = 0;

@@ -2,24 +2,41 @@
 % reduced volume is fixed
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
-iteration = 1000;
-GridSize = [64,64,64]; ReducedVolume0 = 0.8; VesicleTYPE = "o"; ratio = 0.2;
-[x,y,z,F] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
+iteration = 5000; relaxIter = 0;
+GridSize = [64,64,64]; 
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus
-C0 = 0; C1 = -0.1; proteinCoverage = 1;
+C0 = -0.0; C1 = -1.0; proteinCoverage = 1.0;
 Mu = 1000; % incompressibility of vesicle
-CFLNumber = 0.1;
+CFLNumber = 0.2;
+MinimumTimeStep = 1 * 1e-6; % for downward pear
+%MinimumTimeStep = 1 * 1e-5; % for upward pear
+MinimumTimeStep2 = 1 * 1e-6; % minimum time step after adding protein
+%MinimumTimeStep2 = 0.00;
+RelativeTimeScale = .1; % relative drag coefficient for protein motion
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ReducedVolume0 = 0.75; VesicleTYPE = "p"; ratio = 0.35; PresetP = 700; ConserveRAD = true;
+%ReducedVolume0 = 0.8; VesicleTYPE = "o"; ratio = 0.2; ConserveRAD = false; C0 = 13;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
+[x,y,z,F] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
 Grid = SD.GD3(x,y,z);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+load pear.mat
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 map = SD.SDF3(Grid,x,y,z,F);
 map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,100);
 map.GPUsetCalculusToolBox
+
 InitialArea = map.calArea;
+EquivalentRadius = sqrt(InitialArea/(4*pi));
 InitialVolume = map.calVolume;
 InitialReducedVolume = (3*InitialVolume/4/pi) * (4*pi/InitialArea)^(3/2);
 expectedVolume = InitialVolume; % no water crossing membrane
+
+MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);
+InitialAreaDifference = map.surfaceIntegral(MeanCurvature);
+InitialReducedAreaDifference = - InitialAreaDifference/(8*pi*EquivalentRadius);
 
 fprintf('initial area: %.3e, initial volume: %.3e, rd: %.3e\n', InitialArea, InitialVolume, InitialReducedVolume)
 FIG = figure('Name','Vesicle','Position',[10 10 1600 800])
@@ -31,7 +48,8 @@ array_b = []; % bending energy
 array_c = []; % area compressibility
 
 localArea = ones(map.GD3.Size,'gpuArray');
-protein = proteinCoverage * ones(map.GD3.Size,'gpuArray');
+protein = zeros(map.GD3.Size,'gpuArray');
+%protein = proteinCoverage * ones(map.GD3.Size,'gpuArray');
 for i = 0:iteration
 	map.GPUsetCalculusToolBox
 
@@ -55,6 +73,9 @@ for i = 0:iteration
 		( (1.0./localArea - 1).*(3.0./localArea - 1) + (1 - localArea.^2) );
 	proTension = - 0.5 * Kappa1 * protein .* (MeanCurvature - SC).^2 ...
 					+ C1 * protein .* Kappa .* (MeanCurvature - SC);
+
+	CurrentAreaDifference = map.surfaceIntegral(MeanCurvature);
+	CurrentReducedAreaDifference = - CurrentAreaDifference / (8*pi*EquivalentRadius); 
 	% (minus) bending forces
 	NormalBendSpeed = map.GD3.Laplacian( Kappa.*(MeanCurvature-SC) ) + ...
 		+ Kappa .* (0.5*MeanCurvature.^3 - 2*MeanCurvature.*GaussianCurvature ...
@@ -75,27 +96,63 @@ for i = 0:iteration
 	mask = abs(map.F) < 2*map.GD3.Ds;
 	MaxSpeedBend = max(abs(NormalBendSpeed(mask)));
 	Dt = CFLNumber * map.GD3.Ds / MaxSpeedBend;
+	Dt = max(MinimumTimeStep,Dt);
 	time = time + Dt;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % contrain total area and volume
-	c11 = map.surfaceIntegral(MeanCurvature.^2);
-	c12 = map.surfaceIntegral(MeanCurvature); c21 = c12;
-	c22 = CurrentArea;
+%	c11 = map.surfaceIntegral(MeanCurvature.^2);
+%	c12 = map.surfaceIntegral(MeanCurvature); c21 = c12;
+%	c22 = CurrentArea;
+%
+%	areaChangeRate = (InitialArea - CurrentArea) / Dt;
+%	volumeChangeRate = (InitialVolume - CurrentVolume) / Dt;
+%	s1 = - areaChangeRate + map.surfaceIntegral(NormalBendSpeed.*MeanCurvature);
+%	s2 = volumeChangeRate + map.surfaceIntegral(NormalBendSpeed);
+%
+%	TP = [c11,c12;c21,c22] \ [s1;s2];
+%	Tension = TP(1); Pressure= TP(2);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% more complex constraints
+	c11 = CurrentArea;
+	c12 = CurrentAreaDifference; c21 = c12;
+	c13 = map.surfaceIntegral(GaussianCurvature); c31 = c13;
+	c22 = map.surfaceIntegral(MeanCurvature.^2);
+	c23 = map.surfaceIntegral(MeanCurvature.*GaussianCurvature); c32 = c23;
+	c33 = map.surfaceIntegral(GaussianCurvature.^2);
 
-	areaChangeRate = (InitialArea - CurrentArea) / Dt;
 	volumeChangeRate = (InitialVolume - CurrentVolume) / Dt;
-	s1 = - areaChangeRate + map.surfaceIntegral(NormalBendSpeed.*MeanCurvature);
-	s2 = volumeChangeRate + map.surfaceIntegral(NormalBendSpeed);
+	areaChangeRate = (InitialArea - CurrentArea) / Dt;
+	areaDifferenceChangeRate = (InitialAreaDifference - CurrentAreaDifference) / (2*Dt);
 
-	TP = [c11,c12;c21,c22] \ [s1;s2];
-	Tension = TP(1); Pressure= TP(2);
+	s1 = volumeChangeRate + map.surfaceIntegral(NormalBendSpeed);
+	s2 = - areaChangeRate + map.surfaceIntegral(NormalBendSpeed.*MeanCurvature);
+	s3 = - areaDifferenceChangeRate + map.surfaceIntegral(NormalBendSpeed.*GaussianCurvature);
+
+	% conserve volume, area and area difference
+	%PTA = [c11,c12,c13;c21,c22,c23;c31,c32,c33] \ [s1;s2;s3];
+	%Pressure = PTA(1); Tension = PTA(2); TensionDA = PTA(3);
+
+	if ConserveRAD
+		% conserve area and area difference, set volume to be constant
+		Pressure = PresetP;
+		TA = [c22,c23;c32,c33] \ [s2-Pressure*c21; s3-Pressure*c31];
+		Tension = TA(1); TensionDA = TA(2);
+	else
+		% conserve only area, set pressure to be constant
+		Pressure = PresetP; TensionDA =  PresetTDA;
+		Tension = (s2 - Pressure*c21 - TensionDA*c23) / c22; 
+	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % the complete normal speed 
-	normalSpeed = Tension .* MeanCurvature + Pressure - NormalBendSpeed;
+	normalSpeed = Tension .* MeanCurvature + Pressure  ...
+					+ TensionDA .* GaussianCurvature - NormalBendSpeed;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (minus) time rate of change for the level set function
 	maxKappa = max(abs(Kappa(mask)));
-	levelSetTimeStep = map.GD3.smoothFFT(normalSpeed.*map.FGradMag, Dt, maxKappa);
+	levelSetTimeStep = normalSpeed.*map.FGradMag - 1.0 * map.FRegularization(true);
+	levelSetTimeStep = map.GD3.smoothFFT(levelSetTimeStep, Dt, maxKappa);
+	% do not forget to extend this term
+	levelSetTimeStep = map.ENORK2Extend(levelSetTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % divergence of the flow field
 	%normalSpeedSmoothed = map.GD3.smoothFFT(normalSpeed, Dt, maxKappa);
@@ -114,9 +171,9 @@ for i = 0:iteration
 	localAreaTimeStep = map.WENORK3Extend(localAreaTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % divergence of protein motion field
-	proDivergence = Divergence + map.GD3.Laplacian(proTension) ;
+	proDivergence = Divergence +  RelativeTimeScale * map.GD3.Laplacian(proTension) ;
 % additional tangential motion
-	[ptvx,ptvy,ptvz] = map.GD3.Gradient(proTension);
+	[ptvx,ptvy,ptvz] = map.GD3.Gradient(RelativeTimeScale * proTension);
 %	proDivergence = Divergence; ptvx = 0; ptvy = 0; ptvz = 0;
 % (minus) time rate of change for protein field
 	proFlux = protein .* proDivergence ...
@@ -137,17 +194,23 @@ for i = 0:iteration
 %	proteinTimeStep = map.WENORK3Extend(proteinTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % time step the system
-	localArea = localArea - Dt * localAreaTimeStep;
-	localArea = map.GD3.smoothDiffusionFFT(localArea, Dt, 10.0);
-	localArea = localArea * InitialArea / map.surfaceIntegral(localArea); 
-	protein = protein - Dt * proteinTimeStep;
-	maskDepleted = protein < 0;
-	protein(maskDepleted) = protein(maskDepleted) * 0.9;
-	protein = map.GD3.smoothDiffusionFFT(protein, Dt, 10.0);
-	protein = map.WENORK3Extend(protein, 100);
-%	protein(protein<0) = 0;
-	protein = protein * InitialArea * proteinCoverage / map.surfaceIntegral(protein); 
-	%protein = protein - map.surfaceIntegral(protein)/InitialArea + proteinCoverage;
+	if i == relaxIter
+		localArea = ones(map.GD3.Size,'gpuArray');
+		protein = proteinCoverage * ones(map.GD3.Size,'gpuArray');
+		MinimumTimeStep = MinimumTimeStep2;
+	elseif i >relaxIter
+		localArea = localArea - Dt * localAreaTimeStep;
+		localArea = map.GD3.smoothDiffusionFFT(localArea, Dt, 10.0);
+		localArea = localArea * InitialArea / map.surfaceIntegral(localArea); 
+		protein = protein - Dt * proteinTimeStep;
+		maskDepleted = protein < 0;
+		protein(maskDepleted) = protein(maskDepleted) * 0.5;
+		protein = map.GD3.smoothDiffusionFFT(protein, Dt, 10.0);
+		protein = map.WENORK3Extend(protein, 100);
+		%protein(protein<0) = 0;
+		protein = protein * InitialArea * proteinCoverage / map.surfaceIntegral(protein); 
+		%protein = protein - map.surfaceIntegral(protein)/InitialArea + proteinCoverage;
+	end
 	map.F = map.F - Dt * levelSetTimeStep;
 	map.setDistance;
 
@@ -168,12 +231,12 @@ for i = 0:iteration
 	if i>1 && mod(i,5)==0
 		clf(FIG)
 
-		subplot(2,2,4)
+		subplot(2,4,[7 8])
 		area(array_t, [array_b array_c]);
 		titleStr = [ sprintf('%5d: %.3e, ene_b:%.3f, ene_c:%.3f',i,time,ene_b,ene_c) ];
 		title(titleStr)
 
-		subplot(2,2,2)
+		subplot(2,4,4)
 		xslice = ceil(map.GD3.ncols / 2);
 		F = reshape(map.F(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
 		Y = reshape(map.GD3.Y(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
@@ -184,8 +247,8 @@ for i = 0:iteration
 				sign(x_shift),sign(y_shift),sign(z_shift))];
 		title(titleStr)
 
-		ax1 = subplot(2,2,1);
-		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
+		ax1 = subplot(2,4,[1 2 5 6]);
+		titleStr = [ sprintf(' pC:%.3f, RTS:%.3f ', proteinCoverage,RelativeTimeScale) ];
 		%map.plotField(0,localArea,0.0)
 		map.plotField(0,protein,0.0)
 		%map.plotField(0,MeanCurvature-SC,0.0)
@@ -197,10 +260,11 @@ for i = 0:iteration
 		set(gca,'Color','k')
 		title(titleStr)
 		%zoom(2.0)
-		set(ax1,'xlim',[-0.5,0.5],'ylim',[-0.5,0.5],'zlim',[-0.5,0.5])
+		%set(ax1,'xlim',[-0.5,0.5],'ylim',[-0.5,0.5],'zlim',[-0.5,0.5])
+		set(ax1,'xlim',[-0.80,0.80],'ylim',[-0.80,0.80],'zlim',[-0.80,0.80])
 
 		%subplot(2,2,[1,3])
-		ax3 = subplot(2,2,3);
+		ax3 = subplot(2,4,3);
 		zoom reset
 		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
 		map.plotField(0,localArea,0.0)
@@ -214,7 +278,7 @@ for i = 0:iteration
 		set(gca,'Color','k')
 		title(titleStr)
 
-		set(ax3,'xlim',[-0.5,0.5],'ylim',[-0.5,0.5],'zlim',[-0.5,0.5])
+		set(ax3,'xlim',[-0.80,0.80],'ylim',[-0.80,0.80],'zlim',[-0.80,0.80])
 		%zoom(ax3,2.0)
 		%zoom(ax1,2.0)
 		%linkaxes([ax1,ax3],'xyz');
@@ -224,9 +288,12 @@ for i = 0:iteration
 	end
 
 	if mod(i,5)==0
+		x_shift = 0; y_shift = 0; z_shift = 0;
 		map.F = circshift(map.F, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		map.setDistance
-		map.F = map.WENO5RK3Reinitialization(map.F,200);
+		%if mod(i,20)==0
+			map.F = map.WENO5RK3Reinitialization(map.F,200);
+		%end
 
 		localArea = circshift(localArea, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		localArea = map.WENORK3Extend(localArea,100);

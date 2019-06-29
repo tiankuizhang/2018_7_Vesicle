@@ -6,7 +6,7 @@ iteration = 1000;
 GridSize = [64,64,64]; ReducedVolume0 = 0.65; VesicleTYPE = "o"; ratio = 0.2;
 [x,y,z,F] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus
-C0 = -0.0; C1 = -100; proteinCoverage = .1;
+C0 = -0.0; C1 = -10; proteinCoverage = 1.0;
 Mu = 0; % incompressibility of vesicle
 CFLNumber = 0.1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

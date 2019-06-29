@@ -1,12 +1,16 @@
 % test new scheme to account for protein dependent properties for single phase vesicle
 % reduced volume is fixed
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, 'protein_single_phase_10.0');
+simu.simulationStart
+pwd
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
 iteration = 1000;
 GridSize = [64,64,64]; ReducedVolume0 = 0.8; VesicleTYPE = "o"; ratio = 0.2;
 [x,y,z,F] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus
-C0 = 0; C1 = -0.1; proteinCoverage = 1;
+C0 = 0; C1 = -10.0; proteinCoverage = 1;
 Mu = 1000; % incompressibility of vesicle
 CFLNumber = 0.1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -165,7 +169,7 @@ for i = 0:iteration
 
 	fprintf('iter:%d, ene_b:%4.5f, ene_c:%4.5f, ar:%+4.5f, vol:%+4.5f, rd: %4.5f\n',i, ene_b, ene_c, DiffArea, DiffVolume, ReducedVolume)
 
-	if i>1 && mod(i,5)==0
+	if i>5 && mod(i,5)==0
 		clf(FIG)
 
 		subplot(2,2,4)
@@ -221,6 +225,12 @@ for i = 0:iteration
 		%linkprop([ax1,ax3],'XLim','YLim','ZLim');
 
 		drawnow
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		if true 
+			FIG.InvertHardcopy = 'off'; % preseve background color
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	end
 
 	if mod(i,5)==0
@@ -235,8 +245,9 @@ for i = 0:iteration
 		protein = map.WENORK3Extend(protein,100);
 	end
 
-
 end
+simu.simulationEnd
+SD.NE.processImage(30,'protein_single_phase')
 
 
 
