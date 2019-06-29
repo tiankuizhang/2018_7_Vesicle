@@ -1,6 +1,11 @@
 % test new scheme to account for protein dependent properties for single phase vesicle
 % reduced volume is fixed
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+load pear.mat
+simu = SD.Simulation(mfilename, 'pear_protein_pinch');
+simu.simulationStart
+pwd
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
 iteration = 5000; relaxIter = 10;
 GridSize = [64,64,64]; 
@@ -18,10 +23,8 @@ ReducedVolume0 = 0.75; VesicleTYPE = "p"; ratio = 0.35; PresetP = 700; ConserveR
 %ReducedVolume0 = 0.8; VesicleTYPE = "o"; ratio = 0.2; ConserveRAD = false; C0 = 13;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
-[x,y,z,F] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
+[x,y,z,~] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
 Grid = SD.GD3(x,y,z);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-load pear.mat
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 map = SD.SDF3(Grid,x,y,z,F);
 map.setDistance
@@ -228,7 +231,7 @@ for i = 0:iteration
 
 	fprintf('iter:%d, ene_b:%4.5f, ene_c:%4.5f, ar:%+4.5f, vol:%+4.5f, rd: %4.5f\n',i, ene_b, ene_c, DiffArea, DiffVolume, ReducedVolume)
 
-	if i>1 && mod(i,5)==0
+	if i>4 && mod(i,1)==0
 		clf(FIG)
 
 		subplot(2,4,[7 8])
@@ -285,6 +288,12 @@ for i = 0:iteration
 		%linkprop([ax1,ax3],'XLim','YLim','ZLim');
 
 		drawnow
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		if true 
+			FIG.InvertHardcopy = 'off'; % preseve background color
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	end
 
 	if mod(i,5)==0
@@ -301,9 +310,10 @@ for i = 0:iteration
 		protein = circshift(protein, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		protein = map.WENORK3Extend(protein,100);
 	end
-
-
 end
+
+simu.simulationEnd
+SD.NE.processImage(30,'pear_protein_pinch')
 
 
 

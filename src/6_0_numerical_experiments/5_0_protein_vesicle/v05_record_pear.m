@@ -1,18 +1,22 @@
 % test new scheme to account for protein dependent properties for single phase vesicle
 % reduced volume is fixed
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, 'pear');
+simu.simulationStart
+pwd
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
-iteration = 5000; relaxIter = 10;
+iteration = 2000; relaxIter = 2000;
 GridSize = [64,64,64]; 
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus
 C0 = -0.0; C1 = -1.0; proteinCoverage = 1.0;
-Mu = 1000; % incompressibility of vesicle
+Mu = .0; % incompressibility of vesicle
 CFLNumber = 0.2;
 MinimumTimeStep = 1 * 1e-6; % for downward pear
 %MinimumTimeStep = 1 * 1e-5; % for upward pear
 MinimumTimeStep2 = 1 * 1e-6; % minimum time step after adding protein
 %MinimumTimeStep2 = 0.00;
-RelativeTimeScale = .1; % relative drag coefficient for protein motion
+RelativeTimeScale = 1.0; % relative drag coefficient for protein motion
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ReducedVolume0 = 0.75; VesicleTYPE = "p"; ratio = 0.35; PresetP = 700; ConserveRAD = true;
 %ReducedVolume0 = 0.8; VesicleTYPE = "o"; ratio = 0.2; ConserveRAD = false; C0 = 13;
@@ -20,9 +24,6 @@ ReducedVolume0 = 0.75; VesicleTYPE = "p"; ratio = 0.35; PresetP = 700; ConserveR
 % initialization
 [x,y,z,F] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
 Grid = SD.GD3(x,y,z);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-load pear.mat
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 map = SD.SDF3(Grid,x,y,z,F);
 map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,100);
@@ -198,6 +199,7 @@ for i = 0:iteration
 		localArea = ones(map.GD3.Size,'gpuArray');
 		protein = proteinCoverage * ones(map.GD3.Size,'gpuArray');
 		MinimumTimeStep = MinimumTimeStep2;
+		keyboard
 	elseif i >relaxIter
 		localArea = localArea - Dt * localAreaTimeStep;
 		localArea = map.GD3.smoothDiffusionFFT(localArea, Dt, 10.0);
@@ -285,6 +287,12 @@ for i = 0:iteration
 		%linkprop([ax1,ax3],'XLim','YLim','ZLim');
 
 		drawnow
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		if true 
+			FIG.InvertHardcopy = 'off'; % preseve background color
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	end
 
 	if mod(i,5)==0
@@ -304,6 +312,8 @@ for i = 0:iteration
 
 
 end
+simu.simulationEnd
+SD.NE.processImage(50,'pear')
 
 
 
