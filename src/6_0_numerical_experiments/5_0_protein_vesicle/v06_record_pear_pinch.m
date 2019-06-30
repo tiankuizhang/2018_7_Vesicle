@@ -7,7 +7,7 @@ simu.simulationStart
 pwd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
-iteration = 5000; relaxIter = 10;
+iteration = 200; relaxIter = 10;
 GridSize = [64,64,64]; 
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus
 C0 = -0.0; C1 = -1.0; proteinCoverage = 1.0;
