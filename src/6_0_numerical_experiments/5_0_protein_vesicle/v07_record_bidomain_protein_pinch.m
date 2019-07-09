@@ -5,7 +5,7 @@ simu.simulationStart
 pwd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
-iteration = 850; relaxIter = 200;
+iteration = 725; relaxIter = 200;
 GridSize = [64,64,64]; 
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus for Ld phase
 Kappa0Lo = 5.0; Kappa1Lo = 0.0; % bending modulus for Lo phase
@@ -20,8 +20,8 @@ RelativeTimeScale = 1; % relative drag coefficient for protein motion
 radius = 0.98; ra =2.0; xmax = radius*ra; xmin = -xmax; rd = 0.98;
 raLd = 0.067; alpha = acos(1-2*raLd);
 domain = [0,pi/2,alpha,-pi/4];
-%Pressure = - 200; ConsereVol = false;
-ConsereVol = true;
+Pressure = 100; ConsereVol = false;
+%ConsereVol = true;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
 [x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere2([xmin,xmax],GridSize,radius,rd,domain);

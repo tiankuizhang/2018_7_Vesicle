@@ -16,8 +16,8 @@ RelativeTimeScale = 1; % relative drag coefficient for protein motion
 radius = 0.98; ra =2.0; xmax = radius*ra; xmin = -xmax; rd = 0.98;
 raLd = 0.067; alpha = acos(1-2*raLd);
 domain = [0,pi/2,alpha,-pi/4];
-%Pressure = - 200; ConsereVol = false;
-ConsereVol = true;
+Pressure = 100; ConsereVol = false;
+%ConsereVol = true;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
 [x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere2([xmin,xmax],GridSize,radius,rd,domain);
