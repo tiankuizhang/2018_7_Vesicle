@@ -8,6 +8,7 @@
 // For Linux use this line:
 //
 //#include "/usr/local/MATLAB/R2018a/extern/include/mex.h"
+#include "/cm/shared/uaapps/matlab/r2018b/extern/include/mex.h"
 //
 //
 // For Windows systems use this line:
@@ -17,7 +18,7 @@
 //
 // For Mac Os X systems use this line :
 //
-#include "/Applications/MATLAB_R2018a.app/extern/include/mex.h"
+//#include "/Applications/MATLAB_R2018a.app/extern/include/mex.h"
 //
 //
 
