@@ -412,7 +412,8 @@ classdef SDF3 < handle
 			[faces,verts,colors] = isosurface(obj.GD3.X,obj.GD3.Y,obj.GD3.Z,obj.F,0,field);
 			if PlotSurface
 				%obj.plotSurface(0,1,'Green','Black');
-				obj.plotField(0,obj.AHeaviside,0.01)
+				%obj.plotField(0,obj.AHeaviside,0.01)
+				obj.plotField(0,obj.A,0.01)
 			end
 			[x,y,z] = obj.CrossingLine(0,field,faces,verts,colors);
 			line(x(:),y(:),z(:),'Color','red','LineWidth',3);

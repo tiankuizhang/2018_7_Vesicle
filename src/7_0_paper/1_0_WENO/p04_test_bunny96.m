@@ -26,13 +26,6 @@ normals = double(ptCloud.Normal);
 N = size(dsites,1);
 
 bmin = min(dsites,[],1); bmax = max(dsites,[],1);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-bshift = (bmax + bmin) / 2;
-bmin = bmin - bshift; bmax = bmax - bshift;
-dsites = dsites - repmat(bshift, [N, 1]);
-ratio = 1.3;
-bmin = ratio * bmin; bmax = ratio * bmax;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 bdim = max(bmax-bmin);
 wep = npu/bdim;
 
@@ -46,7 +39,20 @@ dsites(N+addpoints+1:N+2*addpoints,:) = dsites(withnormals,:) - delta*normals(wi
 
 rhs = [zeros(N,1); ones(addpoints,1); -ones(addpoints,1)];
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% center grid
 bmin = min(dsites,[],1); bmax = max(dsites,[],1);
+bshift = (bmax + bmin) / 2;
+N = size(dsites,1);
+dsites = dsites - repmat(bshift, [N, 1]);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+bmin = min(dsites,[],1); bmax = max(dsites,[],1);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% add buffer points 
+ratio = 1.3;
+bmin = ratio * bmin; bmax = ratio * bmax;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ctrs = dsites;
 
 xgrid = linspace(bmin(1),bmax(1),neval);
@@ -93,7 +99,8 @@ end
 %%axis off; 
 %hold off
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+map.F = map.ENORK2Reinitialization(map.F, 100);
 
 xshift = (max(xe(:)) + min(xe(:))) / 2;
 yshift = (max(ye(:)) + min(ye(:))) / 2;
@@ -105,36 +112,55 @@ F = gpuArray(reshape(Pf,neval,neval,neval));
 Grid = SD.GD3(x,y,z);
 map = SD.SDF3(Grid,x,y,z,F);
 
-map.A = sqrt(x.^2 + y.^2 + (z-0.05).^2) - 0.03;
 
 Ds = gather(map.GD3.Ds);
 Dt = Ds.^2 * 1
 for i = 1:100
 	map.GPUsetCalculusToolBox
-	levelSetTimeStep = - map.FRegularization(true);
+	levelSetTimeStep = - 0.5 * map.FRegularization(true);
 	levelSetTimeStep = map.GD3.smoothFFT(levelSetTimeStep, Dt, 1.0);
 	map.F = map.F - Dt * levelSetTimeStep;
-%	map.F = map.GD3.smoothDiffusionFFT(map.F, Dt, .01);
+	map.F = map.GD3.smoothDiffusionFFT(map.F, Dt, .015);
+	%if mod(i,10)==0
+	%if true
+	%	map.F = map.ENORK2Reinitialization(map.F, 10);
+	%end
 end
 for i = 1:200
+%	map.GPUsetCalculusToolBox
+%	levelSetTimeStep = - map.FRegularization(true);
+%	levelSetTimeStep = map.GD3.smoothFFT(levelSetTimeStep, Dt, 1.0);
+%	map.F = map.F - Dt * levelSetTimeStep;
+	map.F = map.GD3.smoothDiffusionFFT(map.F, Dt, .01);
+end
+for i = 1:0
 	map.GPUsetCalculusToolBox
 	levelSetTimeStep = - map.FRegularization(true);
 	levelSetTimeStep = map.GD3.smoothFFT(levelSetTimeStep, Dt, 1.0);
 	map.F = map.F - Dt * levelSetTimeStep;
 	map.F = map.GD3.smoothDiffusionFFT(map.F, Dt, .01);
+	%if mod(i,10)==0
+	%if true
+	%	map.F = map.ENORK2Reinitialization(map.F, 10);
+	%end
 end
 
 map.F = map.ENORK2Reinitialization(map.F, 100);
-%map.F = map.WENORK3Reinitialization(map.F, 100);
+map.F = map.WENORK3Reinitialization(map.F, 100);
+map.setDistance
+map.F = map.WENO5RK3Reinitialization(map.F, 100);
+%map.plotSurface(0,1,'r','none'); view(0,90)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 map.setDistance
 map.GPUsetCalculusToolBox
+
+%map.A = sqrt(x.^2 + y.^2 + (z-0.05).^2) - 0.03;
+map.A = exp(x.^2 + y.^2 + (z-0.05).^2) - exp(0.03^2);
 map.GPUAsetCalculusToolBox
 
 FIG = figure('Name','Bunny','Position',[10 10 1600 800]);
 iso = linspace(-0.1, 0.1, 50);
 
-%map.plotSurface(0,1,'r','none')
 ax1 = subplot(1,2,1);
 map.plotIsoField(iso, map.A, true)
 axis equal vis3d
@@ -149,8 +175,8 @@ colorbar off
 map.A = map.WENO5RK3Extend(map.A, 100);
 %map.A = map.WENORK3Extend(map.A, 100);
 %map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
-map.A = map.WENO5RK3ClosetPointSurfaceRedistance(map.A,50,100);
-%map.A = map.WENORK3ClosetPointSurfaceRedistance(map.A,10,100);
+map.A = map.WENO5RK3ClosetPointSurfaceRedistance(map.A,200,100);
+%map.A = map.WENORK3ClosetPointSurfaceRedistance(map.A,100,100);
 ax2 = subplot(1,2,2);
 map.plotIsoField(iso, map.A, true)
 axis equal vis3d
