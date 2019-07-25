@@ -13,6 +13,7 @@
 #ignore img and video files
 *.jpg
 *.png
+*.eps
 *.avi
 *.gif
 
