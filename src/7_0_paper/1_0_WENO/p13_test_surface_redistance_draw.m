@@ -46,5 +46,5 @@ axis equal vis3d
 set(gca,'Color','k')
 %axisLim = [-0.10 0.10];
 %set(gca,'xlim',axisLim,'ylim',axisLim,'zlim',axisLim)
-title('before')
+title('after')
 colorbar off

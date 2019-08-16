@@ -1,5 +1,5 @@
 % return shape of a red blood cell
-function [X,Y,Z,f,Nx,Ny,Nz,MC,SL_MC] = RedBloodCell(Size,R)
+function [X,Y,Z,f,Nx,Ny,Nz,MC,GC,SL_MC] = RedBloodCell(Size,R)
 	
 	% create a meshgrid
 	Nx = Size(1);
@@ -31,22 +31,36 @@ function [X,Y,Z,f,Nx,Ny,Nz,MC,SL_MC] = RedBloodCell(Size,R)
 	H = hessian(f,[x,y,z]);
 	G = gradient(f,[x,y,z]);
 
+	fxx = H(1,1); fxy = H(1,2); fxz = H(1,3);
+	fyx = H(2,1); fyy = H(2,2); fyz = H(2,3);
+	fzx = H(3,1); fzy = H(3,2); fzz = H(3,3);
+
+	% cofactor matrix of Hessian
+	cH = [fyy*fzz-fzy*fyz, fzx*fyz-fyx*fzz, fyx*fzy-fzx*fyy;
+		  fzy*fxz-fxy*fzz, fxx*fzz-fzx*fxz, fzx*fxy-fxx*fzy;
+		  fxy*fyz-fyy*fxz, fxz*fyx-fxx*fyz, fxx*fyy-fyx*fxy ];
+
 	% normals
 	FGradMag = sqrt(G'*G+eps);
 	N = G / FGradMag;
 
 	% mean curvature
 	MC = -trace(H) / FGradMag + G' * H * G / FGradMag^3;
+
 	% surface laplacian of mean curvature
 	G_MC = gradient(MC,[x,y,z]);
 	H_MC = hessian(MC,[x,y,z]);
 	SL_MC = trace(H_MC) - N' * H_MC * N - N' * G_MC * MC; 
+
+	% Gaussian curvature
+	GC = G' * cH * G / FGradMag^4;
 
 	f = matlabFunction(f);
 	Nx = matlabFunction(N(1));
 	Ny = matlabFunction(N(2));
 	Nz = matlabFunction(N(3));
 	MC = matlabFunction(MC);
+	GC = matlabFunction(GC);
 	SL_MC = matlabFunction(SL_MC);
 
 end
