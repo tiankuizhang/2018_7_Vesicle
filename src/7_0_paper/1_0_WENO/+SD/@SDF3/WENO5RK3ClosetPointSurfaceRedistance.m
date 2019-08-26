@@ -59,6 +59,12 @@ function NewA = WENO5RK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 	nx = fx ./ fgradient;
 	ny = fy ./ fgradient;
 	nz = fz ./ fgradient;
+
+%	% tmp code
+%	r = sqrt(obj.GD3.X.^2 + obj.GD3.Y.^2 + obj.GD3.Z.^2);
+%	nx = obj.GD3.X./r;
+%	ny = obj.GD3.Y./r;
+%	nz = obj.GD3.Z./r;
 	
 	Sign = sign(obj.F);
 	vx = Sign .* nx;

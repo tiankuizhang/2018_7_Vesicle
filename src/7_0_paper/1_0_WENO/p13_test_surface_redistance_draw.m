@@ -5,6 +5,10 @@ iter2 = 20;
 
 r0 = 0.6;
 xmin = -1.0; xmax = 1.0;
+ele = -pi/12;
+alpha = pi/6;
+%ele = 0;
+z0 = r0 * sin(ele);
 
 xv = linspace(xmin,xmax,N);
 yv = xv;
@@ -23,7 +27,8 @@ map.setDistance
 map.setCalculusToolBox4;
 
 %map.A = r0 .* sin(elevation);
-A0 = 1 - exp(2*z);
+%A0 = exp(2*0.25) - exp(2*z);
+A0 = exp( 2.0*r0*(elevation - ele) ) - 1;
 map.A = A0;
 
 G_exact = r0 .* elevation;
