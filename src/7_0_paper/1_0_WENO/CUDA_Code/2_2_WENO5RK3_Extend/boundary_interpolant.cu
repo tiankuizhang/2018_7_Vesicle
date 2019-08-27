@@ -26,14 +26,14 @@ void weno_interpolant(double & c, double cx, double s, double const * x, double 
 
 	p3 = y0 	+ (y1 - y0) * (cx - x0) / s 
 				+ (y2 - 2*y1 + y0) * (cx - x0) * (cx - x1) / (2.0 * s * s)
-				+ (y3 - 3*y2 + 3*y1 - y0) * (cx - x1) * (cx - x1) * (cx - x2) / (6 * s * s * s);
+				+ (y3 - 3*y2 + 3*y1 - y0) * (cx - x0) * (cx - x1) * (cx - x2) / (6 * s * s * s);
 
 	c1 = (x2 - cx) * (x3 - cx)   / (20 * s * s);
 	c2 = (x3 - cx) * (cx - xm2)  / (10 * s * s);
 	c3 = (cx - xm2) * (cx - xm1) / (20 * s * s);
 
 	IS1 = (-3579*y1*y0 + 2634*y1*ym1 - 683*y1*ym2 - 6927*y0*ym1 + 1854*y0*ym2 - 1659*ym1*ym2 + 814*y1*y1 + 4326*y0*y0 + 2976*ym1*ym1 + 244*ym2*ym2) / 180;
-	IS2 = (-3777*y1*y0 + 1074*y1*ym1 + 1269*y0*ym1 + 1986*y1*y1 + 1986*y0*y0 + 244*ym1*ym1 + 244*y2*y2 - 1269*y2*y1 + 1074*y2*y0 - 293*y2*ym1) / 180;
+	IS2 = (-3777*y1*y0 + 1074*y1*ym1 - 1269*y0*ym1 + 1986*y1*y1 + 1986*y0*y0 + 244*ym1*ym1 + 244*y2*y2 - 1269*y2*y1 + 1074*y2*y0 - 293*y2*ym1) / 180;
 	IS3 = (-3579*y1*y0 + 4326*y1*y1 + 814*y0*y0 + 2976*y2*y2 + 244*y3*y3 - 683*y3*y0 - 6927*y2*y1 + 2634*y2*y0 - 1659*y3*y2 + 1854*y3*y1) / 180;
 
 	double alpha1, alpha2, alpha3, sum, omega1, omega2, omega3;
