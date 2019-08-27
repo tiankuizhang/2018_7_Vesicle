@@ -43,6 +43,8 @@ function NewA = WENO5RK3ClosetPointSurfaceRedistance(obj,A,iter1,iter2)
 	miny = min(fypf,fypb);
 	minz = min(fzpu,fzpd);
 	fdeltat = 0.3 * min(minx, min(miny,minz));
+
+	%fdeltat = fdeltat .* obj.F ./ sqrt(obj.F.^2 + obj.GD3.Dx);
 	
 	% calculate the extend velocity upwindly
 	fx = zeros(obj.GD3.Size, 'gpuArray');

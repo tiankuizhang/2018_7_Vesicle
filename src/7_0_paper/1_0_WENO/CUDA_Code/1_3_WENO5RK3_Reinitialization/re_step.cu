@@ -268,6 +268,18 @@ void weno_derivative_boundary(double & d_fore, double & d_back, double p1, doubl
 	}// if not a node IMMEDIATELY adjacent to the boundary, calculate weno derivatives as usual
 }
 
+__device__ inline
+void modified_godunov(double & Dx, double Sign, double xL, double xR)
+{
+	if(Sign*xR >= 0 && Sign*xL >= 0) Dx = xL;
+	if(Sign*xR <= 0 && Sign*xL <= 0) Dx = xR;
+	if(Sign*xR >  0 && Sign*xL <  0) Dx = 0.0;
+	if(Sign*xR <  0 && Sign*xL >  0){
+		double s = Sign * ( abs(xR) - abs(xL) ) / (xR - xL);
+		Dx = (s>=0) ? xL : xR;
+	}
+}
+
 __global__
 void re_step(double * step, double const * lsf, bool const * mask, double const * deltat, double const * xpr, double const * xpl, double const * ypf, double const * ypb, double const * zpu, double const * zpd, int rows, int cols, int pges, double dx, double dy, double dz, int num_ele)
 {
@@ -379,4 +391,150 @@ void re_step(double * step, double const * lsf, bool const * mask, double const 
 					) * deltat[ind] * (1.);
 	}
 }
+
+// modified Godunov scheme used
+__global__
+void re_step_backup(double * step, double const * lsf, bool const * mask, double const * deltat, double const * xpr, double const * xpl, double const * ypf, double const * ypb, double const * zpu, double const * zpd, int rows, int cols, int pges, double dx, double dy, double dz, int num_ele)
+{
+	int row_idx = blockIdx.x * blockDim.x + threadIdx.x;
+	int col_idx = blockIdx.y * blockDim.y + threadIdx.y;
+	int pge_idx = blockIdx.z * blockDim.z + threadIdx.z;
+
+	if(row_idx >= rows || col_idx >= cols || pge_idx >= pges){
+		return;
+	}
+
+	int ind = sub2ind(row_idx, col_idx, pge_idx, rows, cols, pges);
+
+	double epsilon = 1e-6 * dx;
+	if( xpr[ind]< epsilon || xpl[ind]<epsilon || ypf[ind]<epsilon || ypb[ind]<epsilon || zpu[ind]<epsilon || zpd[ind]<epsilon ){
+		step[ind] = 0;
+		return;
+	}// for a boundary node, do not change its value
+
+	double p1,p2,p3,p4,p5,p6,p7;
+	double r1,r2,r3,l1,l2,l3;
+
+	p4 = lsf[ind];
+
+	int rght1 	= sub2ind(row_idx, col_idx+1, pge_idx, rows, cols, pges);
+	int rght2 	= sub2ind(row_idx, col_idx+2, pge_idx, rows, cols, pges);
+	int rght3 	= sub2ind(row_idx, col_idx+3, pge_idx, rows, cols, pges);
+	int left1 	= sub2ind(row_idx, col_idx-1, pge_idx, rows, cols, pges);
+	int left2 	= sub2ind(row_idx, col_idx-2, pge_idx, rows, cols, pges);
+	int left3 	= sub2ind(row_idx, col_idx-3, pge_idx, rows, cols, pges);
+
+	p1 = lsf[left3];
+	p2 = lsf[left2];
+	p3 = lsf[left1];
+	p5 = lsf[rght1];
+	p6 = lsf[rght2];
+	p7 = lsf[rght3];
+
+	r1 = xpr[ind];
+	r2 = xpr[rght1];
+	r3 = xpr[rght2];
+
+	l1 = xpl[ind];
+	l2 = xpl[left1];
+	l3 = xpl[left2];
+
+	double xR, xL;
+	weno_derivative_boundary(xR,xL,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,dx);
+
+	int frnt1 	= sub2ind(row_idx+1, col_idx, pge_idx, rows, cols, pges);	
+	int frnt2 	= sub2ind(row_idx+2, col_idx, pge_idx, rows, cols, pges);	
+	int frnt3 	= sub2ind(row_idx+3, col_idx, pge_idx, rows, cols, pges);	
+	int back1 	= sub2ind(row_idx-1, col_idx, pge_idx, rows, cols, pges);
+	int back2 	= sub2ind(row_idx-2, col_idx, pge_idx, rows, cols, pges);
+	int back3 	= sub2ind(row_idx-3, col_idx, pge_idx, rows, cols, pges);
+
+	p1 = lsf[back3];
+	p2 = lsf[back2];
+	p3 = lsf[back1];
+	p5 = lsf[frnt1];
+	p6 = lsf[frnt2];
+	p7 = lsf[frnt3];
+
+	r1 = ypf[ind];
+	r2 = ypf[frnt1];
+	r3 = ypf[frnt2];
+
+	l1 = ypb[ind];
+	l2 = ypb[back1];
+	l3 = ypb[back2];
+
+	double yF, yB;
+	weno_derivative_boundary(yF,yB,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,dy);
+
+	int upup1	= sub2ind(row_idx, col_idx, pge_idx+1, rows, cols, pges);
+	int upup2	= sub2ind(row_idx, col_idx, pge_idx+2, rows, cols, pges);
+	int upup3	= sub2ind(row_idx, col_idx, pge_idx+3, rows, cols, pges);
+	int down1	= sub2ind(row_idx, col_idx, pge_idx-1, rows, cols, pges);
+	int down2	= sub2ind(row_idx, col_idx, pge_idx-2, rows, cols, pges);
+	int down3	= sub2ind(row_idx, col_idx, pge_idx-3, rows, cols, pges);
+
+	p1 = lsf[down3];
+	p2 = lsf[down2];
+	p3 = lsf[down1];
+	p5 = lsf[upup1];
+	p6 = lsf[upup2];
+	p7 = lsf[upup3];
+
+	r1 = zpu[ind];
+	r2 = zpu[upup1];
+	r3 = zpu[upup2];
+
+	l1 = zpd[ind];
+	l2 = zpd[down1];
+	l3 = zpd[down2];
+
+	double zU, zD;
+	weno_derivative_boundary(zU,zD,p1,p2,p3,p4,p5,p6,p7,r1,r2,r3,l1,l2,l3,dz);
+
+//	if (mask[ind]) {
+//		step[ind] = ( sqrt(	max2(pow(min2(0.0,xL),2),pow(max2(0.0,xR),2)) + 
+//							max2(pow(min2(0.0,yB),2),pow(max2(0.0,yF),2)) + 
+//							max2(pow(min2(0.0,zD),2),pow(max2(0.0,zU),2)) ) - 1
+//					) * deltat[ind] * (-1.);
+//	} else{
+//		step[ind] = ( sqrt(	max2(pow(max2(0.0,xL),2),pow(min2(0.0,xR),2)) + 
+//							max2(pow(max2(0.0,yB),2),pow(min2(0.0,yF),2)) + 
+//							max2(pow(max2(0.0,zD),2),pow(min2(0.0,zU),2)) ) - 1
+//					) * deltat[ind] * (1.);
+//	}
+
+	double Dx, Dy, Dz, Sign;
+
+	Sign = mask[ind] ? -1. : 1.0;
+
+	modified_godunov(Dx, Sign, xL, xR);
+	modified_godunov(Dy, Sign, yB, yF);
+	modified_godunov(Dz, Sign, zD, zU);
+
+	step[ind] = ( sqrt( Dx*Dx + Dy*Dy + Dz*Dz) - 1 ) * deltat[ind] * Sign;
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

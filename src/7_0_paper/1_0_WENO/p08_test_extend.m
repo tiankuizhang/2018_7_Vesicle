@@ -56,8 +56,8 @@ function [EG1,EG2,EGM,EL1,EL2,ELM,EB1,EB2,EBM] = test_extend(N)
 	G_lap_exact = -2/r0^2 .* G_exact;
 	G_Bilap_exact = 4/r0^4 .* G_exact;
 	
-	%G = map.WENO5RK3Extend(z,100);
-	G = map.WENORK3Extend(z,100);
+	G = map.WENO5RK3Extend(z,100);
+	%G = map.WENORK3Extend(z,100);
 	G_lap = map.GD3.Laplacian4(G);
 	G_lap = map.WENO5RK3Extend(G_lap,100);
 	G_Bilap = map.GD3.Laplacian4(G_lap);

@@ -8,6 +8,7 @@ function NewF = WENO5RK3Reinitialization(obj,F,iteration)
 	deltat = zeros(obj.GD3.Size, 'gpuArray');
 
 	deltat = 0.3 * obj.min_dist;
+%	deltat = deltat .* obj.F ./ sqrt(obj.F.^2 + obj.GD3.Dx);
 
 	step = zeros(obj.GD3.Size, 'gpuArray');
 

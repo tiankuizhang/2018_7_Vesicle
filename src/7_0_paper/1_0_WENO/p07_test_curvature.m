@@ -48,8 +48,8 @@ function [EF1,EF2,EFM,EMC1,EMC2,EMCM,EGC1,EGC2,EGCM,ELMC1,ELMC2,ELMCM] = Calcula
 	
 	map = SD.SDF3(grid,x,y,z,F);
 	map.setDistance
-	%map.F = map.WENO5RK3Reinitialization(map.F,1000);
-	map.F = map.WENORK3Reinitialization(map.F,1000);
+	map.F = map.WENO5RK3Reinitialization(map.F,1000);
+	%map.F = map.WENORK3Reinitialization(map.F,1000);
 	map.setCalculusToolBox4;
 
 	mask = abs(map.F) < 1.5*map.GD3.Ds;

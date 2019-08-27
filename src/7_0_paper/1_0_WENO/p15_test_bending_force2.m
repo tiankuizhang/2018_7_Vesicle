@@ -67,8 +67,8 @@ function [EMC1,EMC2,EMCM,EGC1,EGC2,EGCM,ELMC1,ELMC2,ELMCM] = CalculateError(Size
 	map = SD.SDF3(grid,X,Y,Z,f(X,Y,Z));
 	map.setDistance
 
-	map.F = map.WENORK3Reinitialization(map.F,1000);
-	%map.F = map.WENO5RK3Reinitialization(map.F,1000);
+	%map.F = map.WENORK3Reinitialization(map.F,1000);
+	map.F = map.WENO5RK3Reinitialization(map.F,1000);
 	%map.F = map.WENORK3Reinitialization(map.F,300);
 	map.setCalculusToolBox4
 
