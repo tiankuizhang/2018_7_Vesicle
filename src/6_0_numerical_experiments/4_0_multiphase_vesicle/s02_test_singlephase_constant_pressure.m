@@ -4,7 +4,7 @@
 %TYPE="p"; ratio = 0.2; rd = 0.75;PresetP = -2000; GridSize = [64,64,96]; ConserveRAD = false; PresetTDA = 0;
 
 % prolate --> pear --> pear pinching
-TYPE="p"; ratio = 0.35; rd = 0.75; PresetP = 700; GridSize = [64,64,64]; ConserveRAD = true;
+%TYPE="p"; ratio = 0.35; rd = 0.75; PresetP = 700; GridSize = [64,64,64]; ConserveRAD = true;
 
 %TYPE = "p"; ratio = 0.35; rd = 0.75; PresetP = 500; GridSize = [64,64,64];
 
@@ -22,7 +22,7 @@ TYPE="p"; ratio = 0.35; rd = 0.75; PresetP = 700; GridSize = [64,64,64]; Conserv
 %TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 20;
 
 % oblate --> three leg starfish
-%TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 12;
+TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 12;
 %TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 15;
 
 %TYPE="o";ratio=0.25; rd = 0.99; PresetP = -300; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = -50;
@@ -138,7 +138,8 @@ for i = 0:3000
 	map.F = map.F - Dt * normalSpeedSmoothed;
 	map.setDistance
 	
-	ene = KappaB * c22;
+	ene = KappaB * c22 - Pressure * CurrentVolume;
+	%ene = KappaB * c22;
 	array_ene = [array_ene; ene];
 	array_t = [array_t time];
 
