@@ -14,9 +14,10 @@ function processImage(obj, videoTime)
 			img = imread(fullfile(obj.JPG,imageNames{ii}));
 	
 			% save image with transparent background
-			alphaChannel = all(img>150,3);
-			imwrite(img, fullfile(obj.PNG, [sprintf('%05d',ii), '.png']), ...
-					'Alpha', double(~alphaChannel));
+			%alphaChannel = all(img>150,3);
+			%imwrite(img, fullfile(obj.PNG, [sprintf('%05d',ii), '.png']), ...
+			%		'Alpha', double(~alphaChannel));
+			imwrite(img, fullfile(obj.PNG, [sprintf('%05d',ii), '.png'] ));
 		
 			% create gif with transparent background
 			[A,map] = rgb2ind(img,256);

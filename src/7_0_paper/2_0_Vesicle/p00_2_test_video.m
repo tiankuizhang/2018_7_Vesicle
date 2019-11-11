@@ -1,19 +1,16 @@
-% relaxation of ellispoid of different types and reduced volume
-
-%type = "O"; rv = 0.6;
-type = "P"; rv = 0.6;
-iteration = 1000;
-SampleRate = 20;
-ReinitializationRate = 1;
-Archive = false;
-GridSize = [64,64,64];
-%GridSize = [96,96,96];
-%GridSize = [128,128,128];
-%simu = none;
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, 'Prolate_equilibrium');
+simu.simulationStart
+pwd
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 totalTime = 2.5e-4;
 numFrame = 50;
-SampleRate = 20;
+type = "P"; rv = 0.6;
+Archive = true;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% relaxation of ellispoid of different types and reduced volume
+ReinitializationRate = 1;
+GridSize = [64,64,64];
 
 % create the initial distance map
 %[x,y,z,f] = SD.Shape.Ellipsoid([128,128,128],rv,type);
@@ -165,6 +162,7 @@ while time < totalTime
 		drawnow
 
 		if Archive 
+			FIG.InvertHardcopy = 'off'; % preserve background color
 			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
 		end
 	end
@@ -174,6 +172,11 @@ while time < totalTime
 	end
 
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu.simulationEnd
+SD.NE.processImage(10,'Prolate_equilibrum')
+
+
 
 
 
