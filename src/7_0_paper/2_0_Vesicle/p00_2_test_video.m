@@ -1,11 +1,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%simu = SD.Simulation(mfilename, 'Oblate_equilibrium');
 simu = SD.Simulation(mfilename, 'Prolate_equilibrium');
 simu.simulationStart
 pwd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-totalTime = 2.5e-4;
 numFrame = 50;
-type = "P"; rv = 0.6;
+type = "p"; rv = 0.6; totalTime = 2.5e-4;
+%type = "o"; rv = 0.6; totalTime = 1.0e-3;
 Archive = true;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % relaxation of ellispoid of different types and reduced volume
@@ -174,7 +175,8 @@ while time < totalTime
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 simu.simulationEnd
-SD.NE.processImage(10,'Prolate_equilibrum')
+simu.processImage(10)
+%SD.NE.processImage(10,'Prolate_equilibrum')
 
 
 

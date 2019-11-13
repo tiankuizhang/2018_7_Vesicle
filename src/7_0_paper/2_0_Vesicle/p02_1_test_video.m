@@ -1,18 +1,25 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, 'pear');
+simu.simulationStart
+pwd
+Archive = true;
+numFrame = 50;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulate single phase vesicle with constrained reduced volume and area difference
-
-%TYPE = "o"; rd = 0.80; rad = .90; adrate = 0.00100;
-
-%TYPE = "p"; rd = 0.90; rad = 1.1; adrate = 0.0001; totalTime = 0.016; relaxTime = 0.009; % pear
 
 %TYPE = "o"; rd = 0.60; rad = .90; adrate = 0.00100; totalTime = 0.04; relaxTime = 0.04; % elliptocytes
 
-%TYPE = "o"; rd = 0.80; rad = .90; adrate = 0.00100; totalTime = 0.04; relaxTime = 0.032; % stomatocytes
-
 %TYPE = "p"; rd = 0.55; rad = 1.6; adrate = 0.00100; totalTime = 1.4e-3; relaxTime = 1.05e-3; %necklaces 
 
-TYPE = "o"; rd = 0.55; rad = 1.3; adrate = 0.00100; totalTime = 0.01; relaxTime = 0.0004; % three leg star fish
+%TYPE = "o"; rd = 0.55; rad = 1.3; adrate = 0.00100; totalTime = 0.002; relaxTime = 0.0004; % two leg star fish
 
-numFrame = 50;
+%TYPE = "o"; rd = 0.55; rad = 1.3; adrate = 0.00100; totalTime = 0.04; relaxTime = 0.003; % four->two->three leg star fish
+
+TYPE = "p"; rd = 0.90; rad = 1.1; adrate = 0.0001; totalTime = 0.016; relaxTime = 0.009; % pear
+
+%TYPE = "o"; rd = 0.80; rad = .90; adrate = 0.00100; totalTime = 0.04; relaxTime = 0.032; % stomatocytes
+
+
 
 GridSize = [64,64,64];
 [x,y,z,f] = SD.Shape.Ellipsoid(GridSize,rd,TYPE,0.35);
@@ -48,13 +55,14 @@ filterWidth = gather(map.GD3.Ds)*5.0;
 ExpectedAreaDifference = 8.*pi*EquivalentRadius * (-rad);
 
 time = 0;
-frameTime = relaxTime;
+%frameTime = relaxTime;
+frameTime = 0;
 array_ene = [];
 array_t = [];
 i = 0;
-for i = 0:3000
-%while time < totalTime
-%	i = i+1;
+%for i = 0:3000
+while time < totalTime
+	i = i+1;
 	map.GPUsetCalculusToolBox
 
 	z_shift = - (map.Box(5) + map.Box(6));
@@ -99,8 +107,8 @@ for i = 0:3000
 	volumeChangeRate = (InitialVolume - CurrentVolume) / Dt;
 	areaChangeRate = (InitialArea - CurrentArea) / Dt;
 
-	if i < 50
-%	if time<relaxTime
+	%if i < 500
+	if time<relaxTime
 		areaDifferenceChangeRate = (InitialAreaDifference - CurrentAreaDifference) / (2*Dt);
 	else
 		tmp = ExpectedAreaDifference - CurrentAreaDifference;
@@ -132,9 +140,11 @@ for i = 0:3000
 
 	fprintf('iter: %5d, ene: %4.5f, ar: %+4.5f, vol: %+4.5f, rd: %4.5f, rad: %+4.5f\n', i, ene, DiffArea, DiffVolume, ReducedVolume, CurrentReducedAreaDifference)
 
-	if mod(i,20)==0 || i==2
-	%if time>frameTime
-	%	frameTime = frameTime + (totalTime - relaxTime)/numFrame
+	%if mod(i,20)==0 || i==2
+	%if time>frameTime || i==2
+	if time>frameTime
+		%frameTime = frameTime + (totalTime - relaxTime)/numFrame;
+		frameTime = frameTime + totalTime/numFrame;
 		clf(FIG)
 
 		subplot(2,2,[1,3])
@@ -144,7 +154,7 @@ for i = 0:3000
 		%map.plotField(0,normalSpeedSmoothed,0.5)
 		%map.plotField(0,map.AHeaviside,0.01)
 		%map.plotField(0,Tension,0.01)
-		map.GD3.DrawBox
+		%map.GD3.DrawBox
 
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
 		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
@@ -171,6 +181,11 @@ for i = 0:3000
 		title(titlestr3)
 
 		drawnow
+
+		if Archive 
+			FIG.InvertHardcopy = 'off'; % preserve background color
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
 	end
 
 	if mod(i,10)==0
@@ -180,6 +195,11 @@ for i = 0:3000
 	end
 
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu.simulationEnd
+simu.processImage(10)
+%SD.NE.processImage(10,'Elliptocyte')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % solve (Idt + alpha * Dt * BiLaplacian)^(-1) with GMRES preconditioned by FFT
 function normalSpeedSmoothed = smoothGMRES(map, NormalSpeed, Dt, Alpha)

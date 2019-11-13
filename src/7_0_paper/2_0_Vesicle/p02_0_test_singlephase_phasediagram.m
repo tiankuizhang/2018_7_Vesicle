@@ -10,7 +10,10 @@
 
 %TYPE = "p"; rd = 0.55; rad = 1.6; adrate = 0.00100; totalTime = 1.4e-3; relaxTime = 1.05e-3; %necklaces 
 
-TYPE = "o"; rd = 0.55; rad = 1.3; adrate = 0.00100; totalTime = 0.01; relaxTime = 0.0004; % three leg star fish
+%TYPE = "o"; rd = 0.55; rad = 1.3; adrate = 0.00100; totalTime = 0.002; relaxTime = 0.0004; % two leg star fish
+
+%TYPE = "o"; rd = 0.55; rad = 1.3; adrate = 0.00100; totalTime = 0.04; relaxTime = 0.003; % four->two->three leg star fish
+
 
 numFrame = 50;
 
@@ -48,13 +51,14 @@ filterWidth = gather(map.GD3.Ds)*5.0;
 ExpectedAreaDifference = 8.*pi*EquivalentRadius * (-rad);
 
 time = 0;
-frameTime = relaxTime;
+%frameTime = relaxTime;
+frameTime = 0;
 array_ene = [];
 array_t = [];
 i = 0;
-for i = 0:3000
-%while time < totalTime
-%	i = i+1;
+%for i = 0:3000
+while time < totalTime
+	i = i+1;
 	map.GPUsetCalculusToolBox
 
 	z_shift = - (map.Box(5) + map.Box(6));
@@ -99,8 +103,8 @@ for i = 0:3000
 	volumeChangeRate = (InitialVolume - CurrentVolume) / Dt;
 	areaChangeRate = (InitialArea - CurrentArea) / Dt;
 
-	if i < 50
-%	if time<relaxTime
+	%if i < 500
+	if time<relaxTime
 		areaDifferenceChangeRate = (InitialAreaDifference - CurrentAreaDifference) / (2*Dt);
 	else
 		tmp = ExpectedAreaDifference - CurrentAreaDifference;
@@ -132,9 +136,10 @@ for i = 0:3000
 
 	fprintf('iter: %5d, ene: %4.5f, ar: %+4.5f, vol: %+4.5f, rd: %4.5f, rad: %+4.5f\n', i, ene, DiffArea, DiffVolume, ReducedVolume, CurrentReducedAreaDifference)
 
-	if mod(i,20)==0 || i==2
-	%if time>frameTime
-	%	frameTime = frameTime + (totalTime - relaxTime)/numFrame
+	%if mod(i,20)==0 || i==2
+	if time>frameTime
+		%frameTime = frameTime + (totalTime - relaxTime)/numFrame
+		frameTime = frameTime + totalTime/numFrame;
 		clf(FIG)
 
 		subplot(2,2,[1,3])

@@ -364,7 +364,8 @@ classdef SDF3 < handle
 			obj.plotIso(6*obj.GD3.Dx,0.8,'Green')
 			obj.plotIso(12*obj.GD3.Dx,0.8,'Red')
 			daspect([1 1 1])
-			view(3); 
+			%view(3); 
+			view(45,30)
 			camlight; lighting gouraud
 		end
 
@@ -389,7 +390,8 @@ classdef SDF3 < handle
 			set(p1,'FaceColor',FaceColor,'EdgeColor',EdgeColor,'FaceAlpha',trans,'EdgeAlpha',0.5);
 			axis(obj.GD3.BOX)
 			daspect([1 1 1])
-			view(3); 
+			view(45,30)
+			%view(3); 
 			camlight; lighting gouraud
 		end
 
@@ -401,7 +403,8 @@ classdef SDF3 < handle
 			set(p1,'FaceColor',Color,'EdgeColor','none','FaceAlpha',trans);
 			axis(obj.GD3.BOX)
 			daspect([1 1 1])
-			view(3); 
+			%view(3); 
+			view(45,30)
 			camlight; lighting gouraud
 		end
 
