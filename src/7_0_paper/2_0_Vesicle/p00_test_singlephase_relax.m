@@ -1,17 +1,17 @@
 % relaxation of ellispoid of different types and reduced volume
 
-%type = "O"; rv = 0.6;
-type = "P"; rv = 0.6;
+type = "O"; rv = 0.7;
+%type = "P"; rv = 0.6;
 iteration = 1000;
 SampleRate = 20;
-ReinitializationRate = 1;
 Archive = false;
-GridSize = [64,64,64];
-%GridSize = [96,96,96];
-%GridSize = [128,128,128];
+%GridSize = [64,64,64]; ReinitializationRate = 20;
+%GridSize = [96,96,96]; ReinitializationRate = 20;
+GridSize = [128,128,128];ReinitializationRate = 20;
 %simu = none;
 
-totalTime = 2.5e-4;
+%totalTime = 2.5e-4;
+totalTime = 3.1e-3;
 numFrame = 50;
 SampleRate = 20;
 
@@ -49,6 +49,10 @@ time = 0;
 frameTime = totalTime/numFrame;
 array_ene = [];
 array_t = [];
+array_da = [];
+array_dv = [];
+array_P = [];
+array_ten = [];
 i = 1;
 while time < totalTime
 %for i = 1:iteration
@@ -109,6 +113,10 @@ while time < totalTime
 	ene = c11;
 	array_ene = [array_ene; ene];
 	array_t = [array_t time];
+	array_da = [array_da DiffArea/100];
+	array_dv = [array_dv DiffVolume/100];
+	array_P = [array_P Pressure];
+	array_ten = [array_ten Tension];
 
 	%if mod(i,SampleRate)==0 || time>totalTime
 	%if mod(ceil(time/totalTime*numFrame),SampleRate)==0 || time>totalTime
@@ -174,6 +182,33 @@ while time < totalTime
 	end
 
 end
+
+%t64 = gather(array_t);
+%ene64 = gather(array_ene);
+%da64 = gather(array_da);
+%dv64 = gather(array_dv);
+%P64 = gather(array_P);
+%ten64 = gather(array_ten);
+%save('oblate64','t64','ene64','da64','dv64','P64','ten64')
+
+
+%t96 = gather(array_t);
+%ene96 = gather(array_ene);
+%da96 = gather(array_da);
+%dv96 = gather(array_dv);
+%P96 = gather(array_P);
+%ten96 = gather(array_ten);
+%save('oblate96','t96','ene96','da96','dv96','P96','ten96');
+
+
+t128 = gather(array_t);
+ene128 = gather(array_ene);
+da128 = gather(array_da);
+dv128 = gather(array_dv);
+P128 = gather(array_P);
+ten128 = gather(array_ten);
+save('oblate128','t128','ene128','da128','dv128','P128','ten128');
+
 
 
 

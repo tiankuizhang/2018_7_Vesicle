@@ -100,7 +100,7 @@ end
 %hold off
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-map.F = map.ENORK2Reinitialization(map.F, 100);
+%map.F = map.ENORK2Reinitialization(map.F, 100);
 
 xshift = (max(xe(:)) + min(xe(:))) / 2;
 yshift = (max(ye(:)) + min(ye(:))) / 2;

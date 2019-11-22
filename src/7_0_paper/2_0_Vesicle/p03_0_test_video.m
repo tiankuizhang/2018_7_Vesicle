@@ -1,11 +1,18 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, 'bidomain98');
+simu.simulationStart
+pwd
+Archive = true;
+numFrame = 100;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulate two phase vesicle without imposing imcompressibility
 % solve conservation law for local area
 
 % rd: reduced volume, ration of area for the lipid disordered phase
-%rd = 0.76; AreaRatioLd = 0.56; ra = 2; totaltime = 1.1e-2;
-%rd = 0.84; AreaRatioLd = 0.18; ra = 2; totaltime = 1e-2;
-%rd = 0.98; AreaRatioLd = 0.89; ra = 1.5; totaltime = 3.3e-3;
-rd = 0.98; AreaRatioLd = 0.95; ra = 1.5;
+%rd = 0.76; AreaRatioLd = 0.56; ra = 2; totalTime = 1.1e-2;
+%rd = 0.84; AreaRatioLd = 0.18; ra = 2; totalTime = 1e-2;
+rd = 0.98; AreaRatioLd = 0.89; ra = 1.5; totalTime = 3.3e-3;
+%rd = 0.98; AreaRatioLd = 0.95; ra = 1.5; totalTime = 2.e-3;
 
 GridSize = [64,64,64];
 radius = 0.98;
@@ -44,6 +51,7 @@ FIG = figure('Name','MultiPhase Vesicle','Position',[10 10 1600 800])
 
 % dynamics
 time = 0;
+frameTime = totalTime/numFrame;
 array_t = [];
 array_ld = [];
 array_lo = [];
@@ -53,7 +61,10 @@ array_eg = [];
 CFLNumber = 1;
 localArea = ones(map.GD3.Size,'gpuArray');
 filterWidth = gather(map.GD3.Ds)*5.0;
-for i = 1:iter
+i = 0
+while time < totalTime
+%for i = 1:iter
+	i = i + 1;
 	map.GPUsetCalculusToolBox
 	map.GPUAsetCalculusToolBox
 
@@ -235,8 +246,11 @@ for i = 1:iter
 			i, ene, DiffArea, DiffVolume, ReducedVolume, DiffPhaseArea)
 	
 
-	if mod(i,20)==0 || i==2
+	%if mod(i,20)==0 || i==2
 	%if  i>1
+	if time>frameTime
+		%frameTime = frameTime + (totalTime - relaxTime)/numFrame;
+		frameTime = frameTime + totalTime/numFrame;
 		clf(FIG)
 
 		subplot(2,2,[1,3])
@@ -290,7 +304,8 @@ for i = 1:iter
 		drawnow
 
 
-		if false 
+		if Archive 
+			FIG.InvertHardcopy = 'off'; % preserve background color
 			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
 		end
 	end
@@ -308,8 +323,12 @@ for i = 1:iter
 		localArea = circshift(localArea, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		localArea = map.WENORK3Extend(localArea,100);
 	end
-
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu.simulationEnd
+simu.processImage(10)
+%SD.NE.processImage(10,'Elliptocyte')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % solve (Idt + alpha * Dt * BiLaplacian)^(-1) with GMRES preconditioned by FFT
 function normalSpeedSmoothed = smoothGMRES(map, NormalSpeed, Dt, Alpha)
