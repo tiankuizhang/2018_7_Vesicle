@@ -1,16 +1,20 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %simu = SD.Simulation(mfilename, 'Oblate_equilibrium');
-simu = SD.Simulation(mfilename, 'Prolate_equilibrium');
+%simu = SD.Simulation(mfilename, 'Prolate_equilibrium');
+simu = SD.Simulation(mfilename, 'Oblate_pinch');
+%simu = SD.Simulation(mfilename, 'Prolate_pinch');
 simu.simulationStart
 pwd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-numFrame = 50;
-type = "p"; rv = 0.6; totalTime = 2.5e-4;
+numFrame = 100;
+%type = "p"; rv = 0.6; totalTime = 2.5e-4;
 %type = "o"; rv = 0.6; totalTime = 1.0e-3;
+type = "O"; rv = 0.6; totalTime = 4e-4; SponC = -30; % iter: 2000; totalTime: 4e-4
+%type = "P"; rv = 0.6; totalTime = 2e-4; SponC = -30; % iter: 400; totalTime: 1.8e-4
 Archive = true;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % relaxation of ellispoid of different types and reduced volume
-ReinitializationRate = 1;
+ReinitializationRate = 10;
 GridSize = [64,64,64];
 
 % create the initial distance map
@@ -68,8 +72,13 @@ while time < totalTime
 
 	% surface Laplacian of mean curvature and numerical Hamiltonian
 	MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(MeanCurvature); 
-	NormalSpeedBend = Kappa * (MeanCurvatureSurfaceLaplacian + 0.5 * MeanCurvature .* ...
-			(MeanCurvature.^2 - 4 * map.GaussianCurvature) );
+%	NormalSpeedBend = Kappa * (MeanCurvatureSurfaceLaplacian + 0.5 * MeanCurvature .* ...
+%		(MeanCurvature.^2 - 4 * map.GaussianCurvature) );
+	NormalSpeedBend = Kappa * (MeanCurvatureSurfaceLaplacian ...
+			+ 0.5 * MeanCurvature .* (MeanCurvature.^2 - 4 * map.GaussianCurvature) ...
+			+ 2. * SponC * map.GaussianCurvature ...
+			- 0.5 * SponC^2 * MeanCurvature );
+	NormalSpeedBend = map.ENORK2Extend(NormalSpeedBend, 100);
 	NormalSpeedBend = map.ENORK2Extend(NormalSpeedBend, 100);
 
 	mask = abs(map.F)<2*map.GD3.Ds;
@@ -104,7 +113,9 @@ while time < totalTime
 	map.F = map.F - Dt * normalSpeedSmoothed;
 	map.setDistance
 
-	ene = c11;
+%	ene = c11;
+	ene = map.surfaceIntegral((MeanCurvature-SponC).^2); 
+	if(i<=3), maxEne = gather(ene); end
 	array_ene = [array_ene; ene];
 	array_t = [array_t time];
 
@@ -147,6 +158,7 @@ while time < totalTime
 
 		subplot(2,2,4)
 		area( array_t, array_ene )
+		ylim(gca,[0 maxEne*1.1])
 		titlestr3 = [ sprintf('iter: %5d, time: %.3e, ene: %5.5f', i,time,ene ) ];
 		title(titlestr3)
 

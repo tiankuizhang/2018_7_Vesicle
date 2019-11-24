@@ -1,17 +1,20 @@
 % relaxation of ellispoid of different types and reduced volume
 
-type = "O"; rv = 0.7;
-%type = "P"; rv = 0.6;
 iteration = 1000;
-SampleRate = 20;
 Archive = false;
-%GridSize = [64,64,64]; ReinitializationRate = 20;
-%GridSize = [96,96,96]; ReinitializationRate = 20;
-GridSize = [128,128,128];ReinitializationRate = 20;
+%GridSize = [48,48,48]; ReinitializationRate = 1;CFLNumber = 0.1;
+GridSize = [64,64,64]; ReinitializationRate = 10;CFLNumber = 0.1;
+%GridSize = [80,80,80]; ReinitializationRate = 1;CFLNumber = 0.1;
+%GridSize = [96,96,96]; ReinitializationRate = 1;CFLNumber = 0.1;
+%GridSize = [128,128,128];ReinitializationRate = 20;CFLNumber = 0.1;
 %simu = none;
 
+type = "O"; rv = 0.6; SponC = -30; SampleRate = 20; % iter: 2000; totalTime: 4e-4
+type = "P"; rv = 0.6; SponC = -30; SampleRate = 2;% iter: 400; totalTime: 1.8e-4
+
 %totalTime = 2.5e-4;
-totalTime = 3.1e-3;
+%totalTime = 1.6e-3;
+totalTime = 1.6e-2;
 numFrame = 50;
 SampleRate = 20;
 
@@ -41,7 +44,6 @@ textZ = gather(map.GD3.zmin);
 
 % bending mudulus
 Kappa = 1.0;
-CFLNumber = 0.1;
 filterWidth = gather(map.GD3.Ds)*5.0;
 
 % dynamics
@@ -74,14 +76,17 @@ while time < totalTime
 
 	% surface Laplacian of mean curvature and numerical Hamiltonian
 	MeanCurvatureSurfaceLaplacian = map.GD3.Laplacian(MeanCurvature); 
-	NormalSpeedBend = Kappa * (MeanCurvatureSurfaceLaplacian + 0.5 * MeanCurvature .* ...
-			(MeanCurvature.^2 - 4 * map.GaussianCurvature) );
+	NormalSpeedBend = Kappa * (MeanCurvatureSurfaceLaplacian ...
+			+ 0.5 * MeanCurvature .* (MeanCurvature.^2 - 4 * map.GaussianCurvature) ...
+			+ 2. * SponC * map.GaussianCurvature ...
+			- 0.5 * SponC^2 * MeanCurvature );
 	NormalSpeedBend = map.ENORK2Extend(NormalSpeedBend, 100);
 
 	mask = abs(map.F)<2*map.GD3.Ds;
 	MaxSpeedBend = max(abs(NormalSpeedBend(mask)));
 
 	Dt = CFLNumber * map.GD3.Ds / MaxSpeedBend;
+	%Dt = 0.5e-5;
 	time = time + Dt;
 
 
@@ -105,12 +110,15 @@ while time < totalTime
 	% now calculate normal Speed
 	normalSpeed = (Tension * MeanCurvature - NormalSpeedBend + Pressure) .* map.FGradMag;
 	normalSpeedSmoothed = map.GD3.smoothGMRES(normalSpeed, Dt, 0.5);
+	%normalSpeedSmoothed = map.GD3.smoothFFT(normalSpeed, Dt, 0.5);
 	normalSpeedSmoothed = map.ENORK2Extend(normalSpeedSmoothed, 100);
 
 	map.F = map.F - Dt * normalSpeedSmoothed;
 	map.setDistance
 
-	ene = c11;
+	%ene = c11;
+	ene = map.surfaceIntegral((MeanCurvature-SponC).^2); % surface integral of mean curvature squared
+	if(i<=3), maxEne = gather(ene); end
 	array_ene = [array_ene; ene];
 	array_t = [array_t time];
 	array_da = [array_da DiffArea/100];
@@ -120,7 +128,9 @@ while time < totalTime
 
 	%if mod(i,SampleRate)==0 || time>totalTime
 	%if mod(ceil(time/totalTime*numFrame),SampleRate)==0 || time>totalTime
-	if time>frameTime || i==2
+	%if time>frameTime || i==2
+	%if mod(i,SampleRate)==0 
+	if mod(i,SampleRate)==0 
 		frameTime = frameTime + totalTime/numFrame;
 		timeStr = [sprintf('%04d: %0.5e, %0.5f', i,time,c11)];
 
@@ -152,11 +162,12 @@ while time < totalTime
 		Z = reshape(map.GD3.Z(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
 		contour(Y,Z,Fslice,[0,0],'blue','LineWidth',3)
 		axis equal
-		titlestr2 = [ sprintf('shift:(%.2f,%.2f,%.2f)',y_shift,x_shift,z_shift ) ];
+		titlestr2 = [ sprintf('shift:(%.2f,%.2f,%.2f), SponC: %.2f',y_shift,x_shift,z_shift ,SponC) ];
 		title(titlestr2)
 
 		subplot(2,2,4)
 		area( array_t, array_ene )
+		ylim(gca,[0 maxEne])
 		titlestr3 = [ sprintf('iter: %5d, time: %.3e, ene: %5.5f', i,time,ene ) ];
 		title(titlestr3)
 
@@ -183,31 +194,106 @@ while time < totalTime
 
 end
 
-%t64 = gather(array_t);
-%ene64 = gather(array_ene);
-%da64 = gather(array_da);
-%dv64 = gather(array_dv);
-%P64 = gather(array_P);
-%ten64 = gather(array_ten);
-%save('oblate64','t64','ene64','da64','dv64','P64','ten64')
+%if CFLNumber==0.01
+%	t0_01 = gather(array_t);
+%	ene0_01 = gather(array_ene);
+%	da0_01 = gather(array_da);
+%	dv0_01 = gather(array_dv);
+%	P0_01 = gather(array_P);
+%	ten0_01 = gather(array_ten);
+%	save('CFL0_01','t0_01','ene0_01','da0_01','dv0_01','P0_01','ten0_01')
+%end
+%
+%
+%if CFLNumber==0.05
+%	t0_05 = gather(array_t);
+%	ene0_05 = gather(array_ene);
+%	da0_05 = gather(array_da);
+%	dv0_05 = gather(array_dv);
+%	P0_05 = gather(array_P);
+%	ten0_05 = gather(array_ten);
+%	save('CFL0_05','t0_05','ene0_05','da0_05','dv0_05','P0_05','ten0_05')
+%end
+%
+%if CFLNumber==0.1
+%	t0_1 = gather(array_t);
+%	ene0_1 = gather(array_ene);
+%	da0_1 = gather(array_da);
+%	dv0_1 = gather(array_dv);
+%	P0_1 = gather(array_P);
+%	ten0_1 = gather(array_ten);
+%	save('CFL0_1','t0_1','ene0_1','da0_1','dv0_1','P0_1','ten0_1')
+%end
+%
+%if CFLNumber==0.5
+%	t0_5 = gather(array_t);
+%	ene0_5 = gather(array_ene);
+%	da0_5 = gather(array_da);
+%	dv0_5 = gather(array_dv);
+%	P0_5 = gather(array_P);
+%	ten0_5 = gather(array_ten);
+%	save('CFL0_5','t0_5','ene0_5','da0_5','dv0_5','P0_5','ten0_5')
+%end
+%
+%if CFLNumber==1.0
+%	t1 = gather(array_t);
+%	ene1 = gather(array_ene);
+%	da1 = gather(array_da);
+%	dv1 = gather(array_dv);
+%	P1 = gather(array_P);
+%	ten1 = gather(array_ten);
+%	save('CFL1','t1','ene1','da1','dv1','P1','ten1')
+%end
+%
+%
+%
+%if GridSize(1)==48
+%	t48 = gather(array_t);
+%	ene48 = gather(array_ene);
+%	da48 = gather(array_da);
+%	dv48 = gather(array_dv);
+%	P48 = gather(array_P);
+%	ten48 = gather(array_ten);
+%	save('oblate48','t48','ene48','da48','dv48','P48','ten48')
+%end
+%
+%if GridSize(1)==64
+%	t64 = gather(array_t);
+%	ene64 = gather(array_ene);
+%	da64 = gather(array_da);
+%	dv64 = gather(array_dv);
+%	P64 = gather(array_P);
+%	ten64 = gather(array_ten);
+%	save('oblate64','t64','ene64','da64','dv64','P64','ten64')
+%end
+%
+%if GridSize(1)==80
+%	t80 = gather(array_t);
+%	ene80 = gather(array_ene);
+%	da80 = gather(array_da);
+%	dv80 = gather(array_dv);
+%	P80 = gather(array_P);
+%	ten80 = gather(array_ten);
+%	save('oblate80','t80','ene80','da80','dv80','P80','ten80')
+%end
+%
+%if GridSize(1)==96
+%	t96 = gather(array_t);
+%	ene96 = gather(array_ene);
+%	da96 = gather(array_da);
+%	dv96 = gather(array_dv);
+%	P96 = gather(array_P);
+%	ten96 = gather(array_ten);
+%	save('oblate96','t96','ene96','da96','dv96','P96','ten96');
+%end
 
-
-%t96 = gather(array_t);
-%ene96 = gather(array_ene);
-%da96 = gather(array_da);
-%dv96 = gather(array_dv);
-%P96 = gather(array_P);
-%ten96 = gather(array_ten);
-%save('oblate96','t96','ene96','da96','dv96','P96','ten96');
-
-
-t128 = gather(array_t);
-ene128 = gather(array_ene);
-da128 = gather(array_da);
-dv128 = gather(array_dv);
-P128 = gather(array_P);
-ten128 = gather(array_ten);
-save('oblate128','t128','ene128','da128','dv128','P128','ten128');
+%t128 = gather(array_t);
+%ene128 = gather(array_ene);
+%da128 = gather(array_da);
+%dv128 = gather(array_dv);
+%P128 = gather(array_P);
+%ten128 = gather(array_ten);
+%save('oblate128','t128','ene128','da128','dv128','P128','ten128');
 
 
 
