@@ -1,7 +1,15 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, 'starfish3');
+simu.simulationStart
+pwd
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Archive = true;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % simulate single phase vesicle with constant pressure
 
 % prolate --> tube
- TYPE="p"; ratio = 0.2; rd = 0.75;PresetP = -2000; GridSize = [64,64,96]; ConserveRAD = false; PresetTDA = 0; iteration = 300; SampleRate = 3;
+% TYPE="p"; ratio = 0.2; rd = 0.75;PresetP = -2000; GridSize = [64,64,96]; ConserveRAD = false; PresetTDA = 0; iteration = 300; SampleRate = 3;
 
 % prolate --> pear --> pear pinching
 %TYPE="p"; ratio = 0.35; rd = 0.75; PresetP = 700; GridSize = [64,64,64]; ConserveRAD = true;
@@ -12,7 +20,7 @@
 %TYPE="o";ratio=0.25; rd = 0.75; PresetP = -100; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 50;
 
 % oblate --> torus
-%TYPE="o";ratio=0.25; rd = 0.75; PresetP = -1000; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 13; iteration = 300; SampleRate = 3;
+% TYPE="o";ratio=0.25; rd = 0.75; PresetP = -1000; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 13; iteration = 300; SampleRate = 3;
 
 % oblate --> prolate --> dumbell --> tube
 % TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 10;
@@ -22,12 +30,11 @@
 % TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 20; iteration = 400; SampleRate = 4;
 
 % oblate --> three leg starfish
-% TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 12; iteration = 700; SampleRate = 7;
+TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 12; iteration = 700; SampleRate = 7;
 %TYPE="o";ratio=0.25; rd = 0.75; PresetP = -200; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = 15;
 
 %TYPE="o";ratio=0.25; rd = 0.99; PresetP = -300; GridSize = [64,64,64]; ConserveRAD = false; PresetTDA = -50;
-
-iteration = 3000; SampleRate = 20;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 [x,y,z,f] = SD.Shape.Ellipsoid(GridSize,rd,TYPE,ratio);
 grid = SD.GD3(x,y,z);
@@ -184,6 +191,11 @@ for i = 0:iteration
 		title(titlestr3)
 
 		drawnow
+
+		if Archive 
+			FIG.InvertHardcopy = 'off'; % preserve background color
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
 	end
 
 	if mod(i,10)==0
@@ -193,4 +205,10 @@ for i = 0:iteration
 	end
 
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu.simulationEnd
+simu.processImage(10)
+
+
+
 
