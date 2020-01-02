@@ -19,7 +19,11 @@ function [x,y,z,F,A,volume] = BiphaseSphere(boundingBox, Size, radius, reducedVo
 	F = sqrt(x.^2+y.^2+z.^2) - radius;
 	
 	z0 = radius * (1 - 2*raLd); % height of phase boundary, z>z0 represents Ld phase
-	A = z0 - sign(z0) * z;
+	if z0 ~= 0 
+		A = z0 - sign(z0) * z;
+	else
+		A = - z;
+	end
 
 	volume = reducedVolume * (4*pi/3) * radius^3;
 
