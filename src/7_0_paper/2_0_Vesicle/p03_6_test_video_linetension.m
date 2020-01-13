@@ -3,8 +3,23 @@
 % new method of regularization
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
+rd = 0.70; raLd = 0.5; C0New = -30; KappaL = 5; Regularization = false;
+ra = 2; iteration = 200; relaxIter = iteration;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, ...
+						['bicomponent', ...
+						 '_rd_', num2str(rd), ...
+						 '_raLd_', num2str(raLd), ...
+						 '_C0_', num2str(abs(C0New)), ...
+						 '_KappaL_', num2str(KappaL), ...
+						]);
+simu.simulationStart
+pwd
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Archive = true;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% simulation parameters
 % iteration = 725; relaxIter = 200;
-iteration = 725; relaxIter = 725;
 %GridSize = [80,80,80]; 
 GridSize = [64,64,64]; 
 %GridSize = [48,48,48]; 
@@ -21,7 +36,6 @@ Mu = 0; correctV = 0.04; % incompressibility of vesicle
 CFLNumber = 1.0;
 MinimumTimeStep = 0.0;
 RelativeTimeScale = 1; % relative drag coefficient for protein motion
-C0New = -1; Regularization = false;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 radius = 0.98; 
 %rd = 0.914; raLd = 0.071; ra =2.0; 
@@ -34,9 +48,9 @@ radius = 0.98;
 
 
 %rd = 0.68; raLd = 0.5; ra = 2; 
-rd = 0.70; raLd = 0.5; ra = 2; 
+%rd = 0.70; raLd = 0.5; C1 = .0; KappaL = 30; ra = 2; 
 %rd = 0.80; raLd = 0.20; ra = 2; 
-KappaL = 5; % isotropic line tension
+%KappaL = 30; % isotropic line tension
 
 xmax = radius*ra; xmin = -xmax; 
 alpha = acos(1-2*raLd); 
@@ -110,9 +124,7 @@ for i = 1:iteration
 	SC = C0 + C1 .* protein; % spontaneous curvature field
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-if C0 ~= C0New
 	if ReducedVolume < rd, C0 = C0New, Regularization = true; end
-end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 % now calculate normal and tangential forces
 	MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);
@@ -347,8 +359,7 @@ end
 		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
 		zticks([map.GD3.BOX(5),0,map.GD3.BOX(6)])
 		axis vis3d equal
-		%set(gca,'Color','k')
-		set(gca,'Color','w')
+		set(gca,'Color','k')
 		title(titleStr)
 
 		ax3 = subplot(2,4,3);
@@ -361,8 +372,7 @@ end
 		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
 		zticks([map.GD3.BOX(5),0,map.GD3.BOX(6)])
 		axis vis3d equal
-		set(gca,'Color','w')
-		%set(gca,'Color','k')
+		set(gca,'Color','k')
 		title(titleStr)
 
 		ax1 = subplot(2,4,[1 2 5 6]);
@@ -377,16 +387,15 @@ end
 		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
 		zticks([map.GD3.BOX(5),0,map.GD3.BOX(6)])
 		axis vis3d equal
-		%set(gca,'Color','k')
-		set(gca,'Color','w')
+		set(gca,'Color','k')
 		title(titleStr)
 
 		drawnow
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%		if true 
-%			FIG.InvertHardcopy = 'off'; % preseve background color
-%			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
-%		end
+		if Archive 
+			FIG.InvertHardcopy = 'off'; % preseve background color
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	end
@@ -412,9 +421,9 @@ end
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
-
-%simu.simulationEnd
-%SD.NE.processImage(60,'bidomain_protein_pinch')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu.simulationEnd
+simu.processImage(10)
 
 
 
