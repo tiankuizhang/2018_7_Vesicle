@@ -4,7 +4,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
 rd = 0.70; raLd = 0.5; C0New = -30; KappaL = 5; Regularization = false;
-ra = 2; iteration = 200; relaxIter = iteration;
+ra = 2; iteration = 400; relaxIter = iteration;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 simu = SD.Simulation(mfilename, ...
 						['bicomponent', ...
@@ -124,7 +124,9 @@ for i = 1:iteration
 	SC = C0 + C1 .* protein; % spontaneous curvature field
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-	if ReducedVolume < rd, C0 = C0New, Regularization = true; end
+if C0 ~= C0New
+	if ReducedVolume < rd+0.003, C0 = C0New, Regularization = true; end
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 % now calculate normal and tangential forces
 	MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);

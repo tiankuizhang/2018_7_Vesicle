@@ -4,24 +4,25 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
 % iteration = 725; relaxIter = 200;
-iteration = 725; relaxIter = 725;
+iteration = 5000; relaxIter = iteration;
 %GridSize = [80,80,80]; 
 GridSize = [64,64,64]; 
 %GridSize = [48,48,48]; 
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus for Ld phase
 %Kappa0Lo = 5.0; Kappa1Lo = 0.0; % bending modulus for Lo phase
-Kappa0Lo = 10.0; Kappa1Lo = 0.0; % bending modulus for Lo phase
+Kappa0Lo = 1.0; Kappa1Lo = 0.0; % bending modulus for Lo phase
 %KappaL = 30; % isotropic line tension
 %KappaG = 3.6; % difference in Gaussian bending rigidity: Ld - Lo
 KappaG = 0; % difference in Gaussian bending rigidity: Ld - Lo
 %C0 = 0; C1 = -1.0; proteinCoverage = 1.0;
 C0 = 0; C1 = .0; proteinCoverage = .0;
 %Mu = 1000; correctV = 0.02; % incompressibility of vesicle
-Mu = 0; correctV = 0.01; % incompressibility of vesicle
+Mu = 1000; correctV = 0.01; % incompressibility of vesicle
 CFLNumber = 1.0;
 MinimumTimeStep = 0.0;
 RelativeTimeScale = 1; % relative drag coefficient for protein motion
 C0New = 0; Regularization = false;
+Alpha = 0.6; % transparency
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 radius = 0.98; 
 %rd = 0.914; raLd = 0.071; ra =2.0; 
@@ -33,24 +34,48 @@ radius = 0.98;
 %rd = 0.98; raLd = 0.95; ra = 1.5;
 
 
-%rd = 0.68; raLd = 0.5; ra = 2; 
-rd = 0.80; raLd = 0.5; ra = 2; 
-%rd = 0.80; raLd = 0.20; ra = 2; 
-KappaL = 20; % isotropic line tension
-
+rd = 0.95; ra = 2; 
 xmax = radius*ra; xmin = -xmax; 
-alpha = acos(1-2*raLd); 
+%KappaL = 20; % isotropic line tension
+KappaL = 100; % isotropic line tension
 
-%domain = [	0, pi/2,alpha,-pi/4;...
-%			0,-pi/2,alpha*1.1,-pi/4];
-%Pressure = -30; ConsereVol = false;
+%Pressure = -300; ConsereVol = false;
 ConsereVol = true;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%alpha1 = pi/12;
+%alpha1 = pi/9;
+alpha1 = pi/11;
+beta1 = -1;
+%alpha2 = pi/12;
+alpha2 = pi/11;
+alpha3 = pi/6;
+beta3 = pi/4;
+domain1 = [...
+			0,		pi/2,		alpha1,beta1;...
+			0,		-pi/2,		alpha1,beta1;...
+			0,		0,			alpha1,beta1;...
+			pi/2,	0,			alpha1,beta1;...
+			pi,		0,			alpha1,beta1;...
+			-pi/2,	0,			alpha1,beta1;...
+			];
+domain2 = [...
+			pi/4,pi/4,	alpha2,-1;	3*pi/4,pi/4,	alpha2,-1; ...
+			-pi/4,pi/4,	alpha2,-1;	-3*pi/4,pi/4,	alpha2,-1;...
+			pi/4,-pi/4,	alpha2,-1;	3*pi/4,-pi/4,	alpha2,-1; ...
+			-pi/4,-pi/4,alpha2,-1;	-3*pi/4,-pi/4,	alpha2,-1;...
+			];
+domain3 = [...
+			0,		pi/2,		alpha3,beta3;...
+			0,		-pi/2,		alpha3,beta3;...
+			];
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
-%[x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere2([xmin,xmax],GridSize,radius,rd,domain);
+%domain = domain2;
+domain = [domain1; domain2];
+[x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere2([xmin,xmax],GridSize,radius,rd,domain);
 
 % for bidomain
- [x,y,z,F,A,volume] = SD.Shape.BiphaseSphere([xmin,xmax],GridSize,radius,rd,raLd);
+% [x,y,z,F,A,volume] = SD.Shape.BiphaseSphere([xmin,xmax],GridSize,radius,rd,raLd);
 
 Grid = SD.GD3(x,y,z);
 map = SD.SDF3(Grid,x,y,z,F);
@@ -65,9 +90,14 @@ map.GPUAsetCalculusToolBox
 
 InitialArea = 4*pi*radius^2*1.0;
 InitialVolume = (4*pi/3)*radius^3;
-expectedVolume = volume;
 AreaNegative = map.AcalArea;
 AreaPositive = InitialArea - AreaNegative;
+raLd = AreaNegative / InitialArea;
+rd = (raLd)^1.5 + (1-raLd)^1.5 - 0.1;
+%rd = (raLd)^1.5 + (1-raLd)^1.5;
+%rd = 0.9;
+
+expectedVolume = InitialVolume * rd;
 
 fprintf('initial area: %4.5f, expected volume: %4.5f\n', InitialArea, expectedVolume)
 % name and size of figure
@@ -110,9 +140,10 @@ for i = 1:iteration
 	SC = C0 + C1 .* protein; % spontaneous curvature field
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
-if C0 ~= C0New
-	if ReducedVolume < rd+0.003, C0 = C0New, Regularization = true; end
-end
+%if C0 ~= C0New
+%	if ReducedVolume < rd+0.003, C0 = C0New, Regularization = true; end
+%end
+%	if ReducedVolume < rd+0.01, Regularization = true; end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
 % now calculate normal and tangential forces
 	MeanCurvature = map.WENORK3Extend(map.MeanCurvature,100);
@@ -166,6 +197,14 @@ end
 	Dt = CFLNumber * map.GD3.Ds / MaxSpeedBend;
 	%Dt = max(MinimumTimeStep,Dt);
 	time = time + Dt;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	% 
+	LineCurvature = sqrt(map.NormalCurvature.^2 + map.GeodesicCurvature.^2);
+	LineCurvature = map.ENORK2Extend(LineCurvature,100);
+	MaxLineCurvature = max(LineCurvature(mask)) * map.GD3.Ds;
+
+	if MaxLineCurvature > 30, Regularization = true; end
+	%else, Regularization = false; end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	% solve for tension and pressure to constrain total area and volume
 	c11 = InitialArea; 
@@ -368,10 +407,11 @@ end
 		ax1 = subplot(2,4,[1 2 5 6]);
 		%ax7 = subplot(2,4,7);
 		zoom reset
-		titleStr = [ sprintf(' rd:%.3f, mu:%.1f, raLd:%.1f, C_0:%.1f ', ReducedVolume,Mu,raLd, C0) ];
+		titleStr = [ sprintf(' rd:%.3f, mu:%.1f, raLd:%.1f, C_0:%.1f, MLC:%.3f ', ReducedVolume,Mu,raLd, C0, MaxLineCurvature) ];
 		map.plotField(0,map.AHeaviside,0.0); 
-		view(45,0)
+		%view(45,0)
 		colormap(gca,[1,0,0;0,0,1]); colorbar off; 
+		alpha(Alpha)
 		map.GD3.DrawBox
 		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
 		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
