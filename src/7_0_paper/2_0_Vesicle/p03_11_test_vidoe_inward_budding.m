@@ -1,10 +1,16 @@
 % generate examples for multi-component vesicles
-% impose incompressibility 
-% new method of regularization
+% no imposing incompressibility 
+% coarsening of smaller domains
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, 'internalBudding14');
+simu.simulationStart
+pwd
+Archive = true;
+%Archive = false;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
 % iteration = 725; relaxIter = 200;
-iteration = 5000; relaxIter = iteration;
+iteration = 140; relaxIter = iteration;
 %GridSize = [80,80,80]; 
 GridSize = [64,64,64]; 
 %GridSize = [48,48,48]; 
@@ -17,11 +23,11 @@ KappaG = 0; % difference in Gaussian bending rigidity: Ld - Lo
 %C0 = 0; C1 = -1.0; proteinCoverage = 1.0;
 C0 = 0; C1 = .0; proteinCoverage = .0;
 %Mu = 1000; correctV = 0.02; % incompressibility of vesicle
-Mu = 1000; correctV = 0.01; % incompressibility of vesicle
+Mu = 1000; correctV = 0.001; % incompressibility of vesicle
 CFLNumber = 1.0;
 MinimumTimeStep = 0.0;
 RelativeTimeScale = 1; % relative drag coefficient for protein motion
-C0New = 0; Regularization = false;
+C0New = 0; Regularization = true;
 Alpha = 0.6; % transparency
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 radius = 0.98; 
@@ -34,44 +40,40 @@ radius = 0.98;
 %rd = 0.98; raLd = 0.95; ra = 1.5;
 
 
-rd = 0.95; ra = 2; 
+rd = 0.80; ra = 1.2; 
 xmax = radius*ra; xmin = -xmax; 
-%KappaL = 20; % isotropic line tension
 KappaL = 100; % isotropic line tension
+%KappaL = 100; % isotropic line tension
 
-%Pressure = -300; ConsereVol = false;
-ConsereVol = true;
+Pressure = -600; ConsereVol = false;Regularization = false; 
+%ConsereVol = true;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%alpha1 = pi/12;
-%alpha1 = pi/9;
-alpha1 = pi/11;
-beta1 = -1;
-%alpha2 = pi/12;
-alpha2 = pi/11;
-alpha3 = pi/6;
-beta3 = pi/4;
-domain1 = [...
-			0,		pi/2,		alpha1,beta1;...
-			0,		-pi/2,		alpha1,beta1;...
-			0,		0,			alpha1,beta1;...
-			pi/2,	0,			alpha1,beta1;...
-			pi,		0,			alpha1,beta1;...
-			-pi/2,	0,			alpha1,beta1;...
+alpha4 = pi/20;
+beta4 = pi/2;
+theta = pi/6;
+
+domain4 = [...
+			pi/4,theta,alpha4,beta4;	3*pi/4,theta,	alpha4,beta4; ...
+			-pi/4,theta,alpha4,beta4;	-3*pi/4,theta,	alpha4,beta4;...
+			pi/4,-theta,alpha4,beta4;	3*pi/4,-theta,	alpha4,beta4; ...
+			-pi/4,-theta,alpha4,beta4;	-3*pi/4,-theta,	alpha4,beta4;...
 			];
-domain2 = [...
-			pi/4,pi/4,	alpha2,-1;	3*pi/4,pi/4,	alpha2,-1; ...
-			-pi/4,pi/4,	alpha2,-1;	-3*pi/4,pi/4,	alpha2,-1;...
-			pi/4,-pi/4,	alpha2,-1;	3*pi/4,-pi/4,	alpha2,-1; ...
-			-pi/4,-pi/4,alpha2,-1;	-3*pi/4,-pi/4,	alpha2,-1;...
+
+alpha5 = pi/22;
+beta5 = pi/2;
+domain5 = [...
+			0,		pi/2,		alpha5,beta5;...
+			0,		-pi/2,		alpha5,beta5;...
+			0,		0,			alpha5,beta5;...
+			pi/2,	0,			alpha5,beta5;...
+			pi,		0,			alpha5,beta5;...
+			-pi/2,	0,			alpha5,beta5;...
 			];
-domain3 = [...
-			0,		pi/2,		alpha3,beta3;...
-			0,		-pi/2,		alpha3,beta3;...
-			];
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
-%domain = domain2;
-domain = [domain1; domain2];
+%domain = domain4;
+domain = [domain4; domain5];
 [x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere2([xmin,xmax],GridSize,radius,rd,domain);
 
 % for bidomain
@@ -253,7 +255,12 @@ for i = 1:iteration
 	levelSetTimeStep = map.ENORK2Extend(levelSetTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (minus) time rate of change for the auxilary level set function
-	AnormalSpeed = LineSpeedn + TensionPositive - TensionNegative;
+	AnormalSpeedBoundary = LineSpeedn + TensionPositive - TensionNegative;
+	if ~Regularization
+	AnormalSpeed = AnormalSpeedBoundary + map.GD3.DotProduct(tvx,tvy,tvz,map.nx,map.ny,map.nz);
+	else
+		AnormalSpeed = AnormalSpeedBoundary;
+	end
 	[rgNormal, rgSD] = map.ARegularization(false);
 	DN = 1.0; Dn = 1.0;
 	if Regularization
@@ -271,7 +278,14 @@ for i = 1:iteration
 				+ map.GD3.Laplacian(0.5*Kappa.*SC.^2 + localTension + proTension);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (minus) time rate of change for localArea, i.e., sum of numerical fluxs
-	laFlux = localArea .* Divergence + map.GD3.WENODotGrad(tvx,tvy,tvz,localArea);
+	if Regularization
+		laFlux = localArea .* Divergence + map.GD3.WENODotGrad(tvx,tvy,tvz,localArea);
+	else
+		laFlux = localArea .* Divergence + ...
+		map.GD3.WENODotGrad(tvx+AnormalSpeedBoundary.*map.nx, ...
+							tvy+AnormalSpeedBoundary.*map.ny, ...
+							tvz+AnormalSpeedBoundary.*map.nz,localArea);
+	end
 	maxTv = max(abs(tv(mask)));
 	localAreaTimeStep = map.GD3.smoothDiffusionFFT(laFlux, Dt, maxTv);
 	localAreaTimeStep = map.WENORK3Extend(localAreaTimeStep, 100);
@@ -425,10 +439,10 @@ for i = 1:iteration
 
 		drawnow
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%		if true 
-%			FIG.InvertHardcopy = 'off'; % preseve background color
-%			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
-%		end
+		if Archive 
+			FIG.InvertHardcopy = 'off'; % preseve background color
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	end
@@ -455,8 +469,10 @@ for i = 1:iteration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
 
-%simu.simulationEnd
-%SD.NE.processImage(60,'bidomain_protein_pinch')
+if Archive
+	simu.simulationEnd
+	simu.processImage(15)
+end
 
 
 

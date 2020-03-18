@@ -34,14 +34,13 @@ radius = 0.98;
 %rd = 0.98; raLd = 0.95; ra = 1.5;
 
 
-rd = 0.98; ra = 1.2; 
+rd = 0.80; ra = 1.2; 
 xmax = radius*ra; xmin = -xmax; 
 %KappaL = 20; % isotropic line tension
-KappaL = 70; % isotropic line tension
+KappaL = 100; % isotropic line tension
 
-Pressure = -200; ConsereVol = false;
-Regularization = true; correctV=0.001;
-%ConsereVol = true;
+Pressure = -600; ConsereVol = false;Regularization = false; correctV=0.001;
+%ConsereVol = true; Regularization = false; correctV=0.01;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %alpha1 = pi/12;
 %alpha1 = pi/9;
@@ -72,8 +71,8 @@ domain3 = [...
 			0,		-pi/2,		alpha3,beta3;...
 			];
 
-alpha4 = pi/15;
-beta4 = pi/4;
+alpha4 = pi/18;
+beta4 = pi/2;
 domain4 = [...
 			pi/4,pi/4,	alpha4,beta4;	3*pi/4,pi/4,	alpha4,beta4; ...
 			-pi/4,pi/4,	alpha4,beta4;	-3*pi/4,pi/4,	alpha4,beta4;...
@@ -81,11 +80,23 @@ domain4 = [...
 			-pi/4,-pi/4,alpha4,beta4;	-3*pi/4,-pi/4,	alpha4,beta4;...
 			];
 
+alpha5 = pi/20;
+beta5 = pi/2
+domain5 = [...
+			0,		pi/2,		alpha5,beta5;...
+			0,		-pi/2,		alpha5,beta5;...
+			0,		0,			alpha5,beta5;...
+			pi/2,	0,			alpha5,beta5;...
+			pi,		0,			alpha5,beta5;...
+			-pi/2,	0,			alpha5,beta5;...
+			];
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
 %domain = domain2;
 %domain = [domain1; domain2];
-domain = domain4;
+%domain = domain4;
+domain = [domain4; domain5];
 [x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere2([xmin,xmax],GridSize,radius,rd,domain);
 
 % for bidomain
@@ -107,10 +118,10 @@ InitialVolume = (4*pi/3)*radius^3;
 AreaNegative = map.AcalArea;
 AreaPositive = InitialArea - AreaNegative;
 raLd = AreaNegative / InitialArea;
-%rd = (raLd)^1.5 + (1-raLd)^1.5 - 0.1;
+rd = (raLd)^1.5 + (1-raLd)^1.5 - 0.1;
 %rd = (raLd)^1.5 + (1-raLd)^1.5;
 %rd = 0.9;
-rd = 0.80;
+%rd = 0.80;
 
 expectedVolume = InitialVolume * rd;
 
@@ -333,7 +344,9 @@ for i = 1:iteration
 	map.setDistance
 	map.A = map.A - Dt * AnormalSpeed;
 	% need to remove the below step if pinching happens
-	map.A = map.WENORK3Extend(map.A, 100);
+	if ~Regularization
+		map.A = map.WENORK3Extend(map.A, 100);
+	end
 
 	localArea = map.WENORK3Extend(localArea, 100);
 	protein = map.WENORK3Extend(protein, 100);
