@@ -1,13 +1,15 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%simu = SD.Simulation(mfilename, 'protein_static');
-%simu.simulationStart
-Archived = false;
-%pwd
+load('pear.mat')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+simu = SD.Simulation(mfilename, 'protein_static_K');
+simu.simulationStart
+Archived = true;
+pwd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
-iteration = 2000;
+iteration = 350;
 GridSize = [64,64,64]; ReducedVolume0 = 0.65; VesicleTYPE = "o"; ratio = 0.2;
-[x,y,z,F] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
+[x,y,z,~] = SD.Shape.Ellipsoid(GridSize,ReducedVolume0,VesicleTYPE,ratio);
 %Kappa0 = 1.0; Kappa1 = 0.0; C0 = -0.0; C1 = -1; proteinCoverage = 4.75;
 Kappa0 = 1.0; Kappa1 = 10.0; C0 = -0.0; C1 = 0; proteinCoverage = 1;
 %Kappa0 = 1.0; Kappa1 = 10.0; C0 = -0.0; C1 = -4.5; proteinCoverage = 1;
@@ -16,7 +18,6 @@ CFLNumber = 0.1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
 Grid = SD.GD3(x,y,z);
-load('pear.mat')
 map = SD.SDF3(Grid,x,y,z,F);
 map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,100);
@@ -167,7 +168,7 @@ for i = 0:iteration
 
 	fprintf('iter:%d, ene_b:%4.5f, ene_c:%4.5f, ar:%+4.5f, vol:%+4.5f, rd: %4.5f\n',i, ene_b, ene_c, DiffArea, DiffVolume, ReducedVolume)
 
-	if i>1 & mod(i,20)==0
+	if i>1 & mod(i,3)==0
 		clf(FIG)
 
 		subplot(2,2,4)
@@ -243,6 +244,6 @@ for i = 0:iteration
 
 end
 
-%simu.simulationEnd
-%SD.NE.processImage(30,'protein_static')
+simu.simulationEnd
+SD.NE.processImage(30,'protein_static_K')
 

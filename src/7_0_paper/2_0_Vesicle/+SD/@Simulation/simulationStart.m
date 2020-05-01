@@ -7,7 +7,8 @@ function simulationStart(obj)
 
 	% make folder to store src,img,video etc.
 		% folder to save all simulation instances
-		HOME = '/extra/tiankuizhang'; % folder to save all simulation instances
+		%HOME = '/extra/tiankuizhang'; % folder to save all simulation instances
+		HOME = '/home/u9/tiankuizhang/NumericalExperiments'; % folder to save all simulation instances
 	
 		% subfolder to save current simulation, tagged with HOUR and a random number
 		obj.INSTANCE = fullfile(HOME, ...

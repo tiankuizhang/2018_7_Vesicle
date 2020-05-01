@@ -1,6 +1,8 @@
 % test new scheme to account for protein dependent properties for single phase vesicle
 % reduced volume is fixed
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+load pear.mat
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %simu = SD.Simulation(mfilename, 'protein_single_phase_0.1');
 %simu.simulationStart
 Archived = false;
@@ -17,7 +19,6 @@ CFLNumber = 0.1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
 Grid = SD.GD3(x,y,z);
-load pear.mat
 map = SD.SDF3(Grid,x,y,z,F);
 map.setDistance
 map.F = map.WENO5RK3Reinitialization(map.F,100);
@@ -180,7 +181,7 @@ for i = 0:iteration
 		titleStr = [ sprintf('%5d: %.3e, ene_b:%.3f, ene_c:%.3f',i,time,ene_b,ene_c) ];
 		title(titleStr)
 
-		subplot(2,2,2)
+		subplot(2,2,[1,3])
 		%xslice = ceil(map.GD3.ncols / 2);
 		%F = reshape(map.F(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
 		%Y = reshape(map.GD3.Y(:,xslice,:), [map.GD3.mrows,map.GD3.lshts]);
@@ -195,7 +196,7 @@ for i = 0:iteration
 		set(gca,'Color','k')
 		caxis([0.8 1.5])
 
-		ax1 = subplot(2,2,1);
+		ax1 = subplot(2,2,2);
 		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
 		%map.plotField(0,localArea,0.0)
 		map.plotField(0,protein,0.0)
@@ -211,23 +212,23 @@ for i = 0:iteration
 		set(ax1,'xlim',[-0.5,0.5],'ylim',[-0.5,0.5],'zlim',[-0.5,0.5])
 		caxis([0.5 2])
 
-		%subplot(2,2,[1,3])
-		ax3 = subplot(2,2,3);
-		zoom reset
-		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
-		map.plotField(0,localArea,0.0)
-		%map.plotField(0,protein,0.0)
-		%map.plotField(0,MeanCurvature-SC,0.0)
-		map.GD3.DrawBox
-		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
-		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
-		zticks([map.GD3.BOX(5),0,map.GD3.BOX(6)])
-		axis vis3d equal
-		set(gca,'Color','k')
-		title(titleStr)
-		caxis([0.5 2])
-
-		set(ax3,'xlim',[-0.5,0.5],'ylim',[-0.5,0.5],'zlim',[-0.5,0.5])
+%		%subplot(2,2,[1,3])
+%		ax3 = subplot(2,2,3);
+%		zoom reset
+%		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
+%		map.plotField(0,localArea,0.0)
+%		%map.plotField(0,protein,0.0)
+%		%map.plotField(0,MeanCurvature-SC,0.0)
+%		map.GD3.DrawBox
+%		xticks([map.GD3.BOX(1),0,map.GD3.BOX(2)])
+%		yticks([map.GD3.BOX(3),0,map.GD3.BOX(4)])
+%		zticks([map.GD3.BOX(5),0,map.GD3.BOX(6)])
+%		axis vis3d equal
+%		set(gca,'Color','k')
+%		title(titleStr)
+%		caxis([0.5 2])
+%
+%		set(ax3,'xlim',[-0.5,0.5],'ylim',[-0.5,0.5],'zlim',[-0.5,0.5])
 		%zoom(ax3,2.0)
 		%zoom(ax1,2.0)
 		%linkaxes([ax1,ax3],'xyz');

@@ -1,29 +1,40 @@
 % test new scheme to account for protein dependent properties for mutiphase vesicle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%simu = SD.Simulation(mfilename, 'bidomain_protein_pinch');
-%simu.simulationStart
-%pwd
+simu = SD.Simulation(mfilename, 'bidomain_protein_pinch_L');
+simu.simulationStart
+Archived = true;
+pwd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
-iteration = 725; relaxIter = 725;
+%iteration = 2000; relaxIter = 2000;
+%iteration = 2000; relaxIter = 250;
+iteration = 580; relaxIter = 250;
 GridSize = [64,64,64]; 
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus for Ld phase
 Kappa0Lo = 5.0; Kappa1Lo = 0.0; % bending modulus for Lo phase
-KappaL = 30; % isotropic line tension
+KappaL = 5; % isotropic line tension
 KappaG = 3.6; % difference in Gaussian bending rigidity: Ld - Lo
-C0 = 0; C1 = -1.0; proteinCoverage = 1.0;
+C0 = 0; C1 = .0; proteinCoverage = .0;
 Mu = 1000; % incompressibility of vesicle
 CFLNumber = 1.0;
 MinimumTimeStep = 0.0;
-RelativeTimeScale = 1; % relative drag coefficient for protein motion
+RelativeTimeScale = 3; % relative drag coefficient for protein motion
+Regularization = false;
+NewC1 = -5;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 radius = 0.98; ra =2.0; xmax = radius*ra; xmin = -xmax; 
-raLd = 0.067; alpha = acos(1-2*raLd);
+raLd = 0.1; alpha = acos(1-2*raLd);
 domain = [0,pi/2,alpha,-pi/4];
-Pressure = 100; ConsereVol = false;
+%Pressure = 100; ConsereVol = false;
+ConsereVol = true;
 
-rd = (raLd)^1.5 + (1-raLd)^1.5;
 %ConsereVol = true;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%relaxIter = 2000; KappaL = 50; Kappa0Lo = 1.0; Drd = 0.01; Pressure = 100; ConsereVol = false;
+relaxIter = 200; KappaL = 50; Drd = 0; Pressure = 100; ConsereVol = false; NewC1 = -1;
+%relaxIter = 250; KappaL = 5; Drd = 0.00;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+rd = (raLd)^1.5 + (1-raLd)^1.5 - Drd ;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialization
 [x,y,z,F,A,volume] = SD.Shape.MultiDomainSphere2([xmin,xmax],GridSize,radius,rd,domain);
@@ -135,6 +146,13 @@ for i = 1:iteration
 	%Dt = max(MinimumTimeStep,Dt);
 	time = time + Dt;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+	LineCurvature = sqrt(map.NormalCurvature.^2 + map.GeodesicCurvature.^2);
+	LineCurvature = map.ENORK2Extend(LineCurvature,100);
+	MaxLineCurvature = max(LineCurvature(mask)) * map.GD3.Ds;
+
+	if MaxLineCurvature > 30, Regularization = true; end
+	%else, Regularization = false; end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	% solve for tension and pressure to constrain total area and volume
 	c11 = InitialArea; 
 	c12 = map.AsurfaceIntegral(MeanCurvature); c21 = c12;
@@ -183,7 +201,9 @@ for i = 1:iteration
 	AnormalSpeed = LineSpeedn + TensionPositive - TensionNegative;
 	[rgNormal, rgSD] = map.ARegularization(false);
 	DN = 1.0; Dn = 1.0;
-	AnormalSpeed = AnormalSpeed - DN * rgNormal - Dn * rgSD;
+	if Regularization
+		AnormalSpeed = AnormalSpeed - DN * rgNormal - Dn * rgSD;
+	end
 	AnormalSpeed = map.GD3.smoothFFT(AnormalSpeed.*map.AGradMag, Dt, 0.5*KappaL);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % divergence of the flow field
@@ -216,10 +236,14 @@ for i = 1:iteration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % time step the system
 	if i == relaxIter
-		expectedVolume = InitialVolume * 0.90;
+		%Kappa0 = 1.0/12; Kappa1 = 11/12; % bending modulus for Ld phase
+		%Kappa0Lo = 5.0/12; Kappa1Lo = 55/12; % bending modulus for Lo phase
+		C0 = 0; C1 = NewC1; proteinCoverage = 1.0;
+		%expectedVolume = InitialVolume * 0.90;
 		localArea = ones(map.GD3.Size,'gpuArray');
 		protein = proteinCoverage * ones(map.GD3.Size,'gpuArray');
 		MinimumTimeStep = 1 * 1e-6;
+		%C0 = -10; C1 = 0;
 	elseif i >relaxIter
 		localArea = localArea - Dt * localAreaTimeStep;
 		localArea = map.GD3.smoothDiffusionFFT(localArea, Dt, 10.0);
@@ -267,7 +291,7 @@ for i = 1:iteration
 		ene0 = gather(ene);
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	if i>5 && mod(i,100)==0
+	if i>5 && mod(i,5)==0
 		clf(FIG)
 
 		ax8 = subplot(2,4,8);
@@ -295,7 +319,7 @@ for i = 1:iteration
 
 		ax1 = subplot(2,4,[1 2 5 6]);
 		%ax7 = subplot(2,4,7);
-		titleStr = [ sprintf('P pC:%.3f, RTS:%.3f ', proteinCoverage,RelativeTimeScale) ];
+		titleStr = [ sprintf('C1 pC:%.3f, RTS:%.3f ', C1,RelativeTimeScale) ];
 		%map.plotField(0,localArea,0.0)
 		map.plotField(0,protein,0.0)
 		colormap(gca,[parula]); caxis([0 2])
@@ -310,7 +334,7 @@ for i = 1:iteration
 
 		ax3 = subplot(2,4,3);
 		zoom reset
-		titleStr = [ sprintf('LA rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
+		titleStr = [ sprintf('kL:%.3f, C1:%.3f ', KappaL,C1) ];
 		map.plotField(0,localArea,0.0)
 		colormap(gca,[parula]); caxis([0.9 1.1])
 		map.GD3.DrawBox
@@ -324,7 +348,7 @@ for i = 1:iteration
 		%ax1 = subplot(2,4,[1 2 5 6]);
 		ax7 = subplot(2,4,7);
 		zoom reset
-		titleStr = [ sprintf(' rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
+		titleStr = [ sprintf('rd:%.3f, mu:%.3f ', ReducedVolume,Mu) ];
 		map.plotField(0,map.AHeaviside,0.0); 
 		colormap(gca,[1,0,0;0,0,1]); colorbar off; 
 		map.GD3.DrawBox
@@ -337,10 +361,10 @@ for i = 1:iteration
 
 		drawnow
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%		if true 
-%			FIG.InvertHardcopy = 'off'; % preseve background color
-%			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
-%		end
+		if Archived 
+			FIG.InvertHardcopy = 'off'; % preseve background color
+			saveas(FIG, fullfile(simu.JPG, [sprintf('%05d',i),'isosurface','.jpg']))
+		end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 	end
@@ -354,7 +378,9 @@ for i = 1:iteration
 		%end
 
 		map.A = circshift(map.A, [sign(y_shift),sign(x_shift),sign(z_shift)]);
-%		map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
+		if ~Regularization
+			map.A = map.ENORK2ClosetPointSurfaceRedistance(map.A,100,50);
+		end
 
 		localArea = circshift(localArea, [sign(y_shift),sign(x_shift),sign(z_shift)]);
 		localArea = map.WENORK3Extend(localArea,100);
@@ -365,8 +391,8 @@ for i = 1:iteration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
 
-%simu.simulationEnd
-%SD.NE.processImage(60,'bidomain_protein_pinch')
+simu.simulationEnd
+SD.NE.processImage(60,'bidomain_protein_pinch_L')
 
 
 
