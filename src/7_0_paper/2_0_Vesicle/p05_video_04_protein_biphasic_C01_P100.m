@@ -1,10 +1,10 @@
 % test new scheme to account for protein dependent properties for mutiphase vesicle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%simu = SD.Simulation(mfilename, 'bidomain_protein_pinch_L');
-%simu.simulationStart
-%Archived = true;
-Archived = false;
-%pwd
+simu = SD.Simulation(mfilename, 'bidomain_protein_C01_P100');
+simu.simulationStart
+Archived = true;
+%Archived = false;
+pwd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
 %iteration = 2000; relaxIter = 2000;
@@ -32,7 +32,7 @@ ConsereVol = true;
 %ConsereVol = true;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %relaxIter = 2000; KappaL = 50; Kappa0Lo = 1.0; Drd = 0.01; Pressure = 100; ConsereVol = false;
-relaxIter = 200; KappaL = 50; Drd = 0; Pressure = 100; ConsereVol = false; NewC1 = -20;
+relaxIter = 200; KappaL = 50; Drd = 0; Pressure = 100; ConsereVol = false; NewC1 = -1; NewPressure = 100;
 %relaxIter = 250; KappaL = 5; Drd = 0.00;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 rd = (raLd)^1.5 + (1-raLd)^1.5 - Drd ;
@@ -244,6 +244,7 @@ for i = 1:iteration
 		%Kappa0 = 1.0/12; Kappa1 = 11/12; % bending modulus for Ld phase
 		%Kappa0Lo = 5.0/12; Kappa1Lo = 55/12; % bending modulus for Lo phase
 		C0 = 0; C1 = NewC1; proteinCoverage = 1.0;
+		Pressure = NewPressure;
 		%expectedVolume = InitialVolume * 0.90;
 		localArea = ones(map.GD3.Size,'gpuArray');
 		protein = proteinCoverage * ones(map.GD3.Size,'gpuArray');
@@ -297,7 +298,7 @@ for i = 1:iteration
 		ene0 = gather(ene);
 	end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	if i>5 && mod(i,5)==0
+	if i>5 && mod(i,10)==0
 		clf(FIG)
 
 		ax8 = subplot(2,4,8);
