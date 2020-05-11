@@ -1,14 +1,15 @@
 % test new scheme to account for protein dependent properties for mutiphase vesicle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-simu = SD.Simulation(mfilename, 'bidomain_protein_pinch_C');
-simu.simulationStart
-Archived = true;
-pwd
+%simu = SD.Simulation(mfilename, 'bidomain_protein_pinch_C');
+%simu.simulationStart
+%Archived = true;
+Archived = false;
+%pwd
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % simulation parameters
 %iteration = 2000; relaxIter = 2000;
-%iteration = 2000; relaxIter = 250;
-iteration = 650; relaxIter = 250;
+iteration = 2000; relaxIter = 250;
+%iteration = 650; relaxIter = 250;
 GridSize = [64,64,64]; 
 Kappa0 = 1.0; Kappa1 = 0.0; % bending modulus for Ld phase
 Kappa0Lo = 5.0; Kappa1Lo = 0.0; % bending modulus for Lo phase
@@ -222,13 +223,17 @@ for i = 1:iteration
 	localAreaTimeStep = map.WENORK3Extend(localAreaTimeStep, 100);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % divergence of protein motion field
-	proDivergence = Divergence +  RelativeTimeScale * map.GD3.Laplacian(proTension) ;
+	proTension2 = - 0.5 * Kappa1 * (MeanCurvature - SC).^2 ...
+					+ C1 * Kappa .* (MeanCurvature - SC);
+	proDivergence = Divergence +  RelativeTimeScale * ...
+		protein .* map.GD3.Laplacian(proTension2) ;
 % additional tangential motion
-	[ptvx,ptvy,ptvz] = map.GD3.Gradient(RelativeTimeScale * proTension);
+	[ptvx,ptvy,ptvz] = map.GD3.Gradient(RelativeTimeScale * proTension2);
 %	proDivergence = Divergence; ptvx = 0; ptvy = 0; ptvz = 0;
 % (minus) time rate of change for protein field
 	proFlux = protein .* proDivergence ...
-		+ map.GD3.WENODotGrad(tvx+ptvx, tvy+ptvy, tvz+ptvz, protein);
+		+ map.GD3.WENODotGrad(tvx, tvy, tvz, protein) ...
+		+ map.GD3.WENODotGrad(ptvx, ptvy, ptvz, protein.^2);
 	pTv = sqrt( (tvx+ptvx).^2 + (tvy+ptvy).^2 + (tvz+ptvz).^2 );
 	pmaxTv = max(abs(pTv(mask)));
 	proteinTimeStep = map.GD3.smoothDiffusionFFT(proFlux, Dt, pmaxTv);
@@ -391,8 +396,10 @@ for i = 1:iteration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
 
-simu.simulationEnd
-SD.NE.processImage(60,'bidomain_protein_pinchi_C')
+if Archived
+	simu.simulationEnd
+	SD.NE.processImage(60,'bidomain_protein_pinchi_C')
+end
 
 
 
