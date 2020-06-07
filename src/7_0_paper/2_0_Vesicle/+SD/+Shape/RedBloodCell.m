@@ -50,7 +50,7 @@ function [X,Y,Z,f,Nx,Ny,Nz,MC,GC,SL_MC] = RedBloodCell(Size,R)
 	% surface laplacian of mean curvature
 	G_MC = gradient(MC,[x,y,z]);
 	H_MC = hessian(MC,[x,y,z]);
-	SL_MC = trace(H_MC) - N' * H_MC * N - N' * G_MC * MC; 
+	SL_MC = trace(H_MC) - N' * H_MC * N + N' * G_MC * MC; 
 
 	% Gaussian curvature
 	GC = G' * cH * G / FGradMag^4;

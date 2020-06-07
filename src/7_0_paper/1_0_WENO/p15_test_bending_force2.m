@@ -11,7 +11,7 @@ Size128 = [128,128,128];
 %Size = [192,192,192];
 %Size = [256,256,256];
 
-%[~,~,~,f,Nx,Ny,Nz,MC,GC,SL_MC] = SD.Shape.RedBloodCell(Size16,1.0);
+[~,~,~,f,Nx,Ny,Nz,MC,GC,SL_MC] = SD.Shape.RedBloodCell(Size16,1.0);
 
 [EMC1_16,EMC2_16,EMCM_16,EGC1_16,EGC2_16,EGCM_16,ELMC1_16,ELMC2_16,ELMCM_16] = CalculateError(Size16, f,MC,GC,SL_MC);
 [EMC1_32,EMC2_32,EMCM_32,EGC1_32,EGC2_32,EGCM_32,ELMC1_32,ELMC2_32,ELMCM_32] = CalculateError(Size32, f,MC,GC,SL_MC);
@@ -90,7 +90,9 @@ function [EMC1,EMC2,EMCM,EGC1,EGC2,EGCM,ELMC1,ELMC2,ELMCM] = CalculateError(Size
 
 	% error in SurfaceLaplacian of Mean curvature
 	MC = map.WENORK3Extend(MC, 100);
-	SLMC = map.SurfaceLaplacian4(MC);
+	%SLMC = map.SurfaceLaplacian4(MC);
+	SLMC = SL_MC(X,Y,Z);
+
 	MeanCurvatureSurfaceLaplacian = map.SurfaceLaplacian4(map.WENORK3Extend(map.MeanCurvature,100));
 	DSLMC = map.WENORK3Extend(SLMC - MeanCurvatureSurfaceLaplacian,100);
 	ELMC1 = map.surfaceIntegral(abs(DSLMC));
