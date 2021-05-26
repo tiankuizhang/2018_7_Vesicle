@@ -3,18 +3,19 @@
 iteration = 1000;
 Archive = false;
 %GridSize = [48,48,48]; ReinitializationRate = 1;CFLNumber = 0.1;
-GridSize = [64,64,64]; ReinitializationRate = 10;CFLNumber = 0.1;
+%GridSize = [64,64,64]; ReinitializationRate = 10;CFLNumber = 0.1;
 %GridSize = [80,80,80]; ReinitializationRate = 1;CFLNumber = 0.1;
 %GridSize = [96,96,96]; ReinitializationRate = 1;CFLNumber = 0.1;
-%GridSize = [128,128,128];ReinitializationRate = 20;CFLNumber = 0.1;
+GridSize = [128,128,128];ReinitializationRate = 20;CFLNumber = 0.1;
 %simu = none;
 
-type = "O"; rv = 0.6; SponC = -30; SampleRate = 20; % iter: 2000; totalTime: 4e-4
-type = "P"; rv = 0.6; SponC = -30; SampleRate = 2;% iter: 400; totalTime: 1.8e-4
+%type = "O"; rv = 0.6; SponC = -30; SampleRate = 20; % iter: 2000; totalTime: 4e-4
+type = "O"; rv = 0.6; SponC = 0; SampleRate = 20; % iter: 2000; totalTime: 4e-4
+%type = "P"; rv = 0.6; SponC = -30; SampleRate = 2;% iter: 400; totalTime: 1.8e-4
 
 %totalTime = 2.5e-4;
-%totalTime = 1.6e-3;
-totalTime = 1.6e-2;
+totalTime = 1.6e-3;
+%totalTime = 1.6e-2;
 numFrame = 50;
 SampleRate = 20;
 
@@ -287,13 +288,15 @@ end
 %	save('oblate96','t96','ene96','da96','dv96','P96','ten96');
 %end
 
-%t128 = gather(array_t);
-%ene128 = gather(array_ene);
-%da128 = gather(array_da);
-%dv128 = gather(array_dv);
-%P128 = gather(array_P);
-%ten128 = gather(array_ten);
-%save('oblate128','t128','ene128','da128','dv128','P128','ten128');
+if GridSize(1)==128
+	t128 = gather(array_t);
+	ene128 = gather(array_ene);
+	da128 = gather(array_da);
+	dv128 = gather(array_dv);
+	P128 = gather(array_P);
+	ten128 = gather(array_ten);
+	save('oblate128','t128','ene128','da128','dv128','P128','ten128');
+end
 
 
 

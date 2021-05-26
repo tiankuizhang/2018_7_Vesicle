@@ -126,6 +126,7 @@ fprintf(fid, '\t %03d:   \t%10.5e,  \t\t%10.5e, \t\t%10.5e\n', 96, energyTimeInt
 fprintf(fid, '\t %03d:   \t%10.5e,  \t\t%10.5e, \t\t%10.5e\n',128, energyTimeIntegral27, pressureTimeIntegral27, tensionTimeIntegral27);
 
 fprintf(fid, '\n');
+fprintf(fid, '\t gridsize \tenergy error \t order \t\tpressure error \t order\ttension error \t order\n');
 fprintf(fid, '\t %03d \t %5.3e \t -     \t\t %5.3e \t - \t %5.3e \t - \n',48,EER48,PER48,TER48);
 fprintf(fid, '\t %03d \t %5.3e \t %7.2f \t %5.3e \t %5.2f \t %5.3e \t %5.2f \n', 64,EER64,log(EER48/EER64)/log(64/48),PER64,log(PER48/PER64)/log(64/48), TER64,log(TER48/TER64)/log(64/48));
 fprintf(fid, '\t %03d \t %5.3e \t %7.2f \t %5.3e \t %5.2f \t %5.3e \t %5.2f \n', 80,EER80,log(EER64/EER80)/log(80/64),PER80,log(PER64/PER80)/log(80/64), TER80,log(TER64/TER80)/log(80/64));
