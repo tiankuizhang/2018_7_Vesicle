@@ -5,8 +5,8 @@ Archive = false;
 %GridSize = [48,48,48]; ReinitializationRate = 1;CFLNumber = 0.1;
 %GridSize = [64,64,64]; ReinitializationRate = 10;CFLNumber = 0.1;
 %GridSize = [80,80,80]; ReinitializationRate = 1;CFLNumber = 0.1;
-%GridSize = [96,96,96]; ReinitializationRate = 1;CFLNumber = 0.1;
-GridSize = [128,128,128];ReinitializationRate = 20;CFLNumber = 0.1;
+GridSize = [96,96,96]; ReinitializationRate = 1;CFLNumber = 0.5;
+%GridSize = [128,128,128];ReinitializationRate = 20;CFLNumber = 0.1;
 %simu = none;
 
 %type = "O"; rv = 0.6; SponC = -30; SampleRate = 20; % iter: 2000; totalTime: 4e-4
@@ -195,59 +195,68 @@ while time < totalTime
 
 end
 
-%if CFLNumber==0.01
-%	t0_01 = gather(array_t);
-%	ene0_01 = gather(array_ene);
-%	da0_01 = gather(array_da);
-%	dv0_01 = gather(array_dv);
-%	P0_01 = gather(array_P);
-%	ten0_01 = gather(array_ten);
-%	save('CFL0_01','t0_01','ene0_01','da0_01','dv0_01','P0_01','ten0_01')
-%end
-%
-%
-%if CFLNumber==0.05
-%	t0_05 = gather(array_t);
-%	ene0_05 = gather(array_ene);
-%	da0_05 = gather(array_da);
-%	dv0_05 = gather(array_dv);
-%	P0_05 = gather(array_P);
-%	ten0_05 = gather(array_ten);
-%	save('CFL0_05','t0_05','ene0_05','da0_05','dv0_05','P0_05','ten0_05')
-%end
-%
-%if CFLNumber==0.1
-%	t0_1 = gather(array_t);
-%	ene0_1 = gather(array_ene);
-%	da0_1 = gather(array_da);
-%	dv0_1 = gather(array_dv);
-%	P0_1 = gather(array_P);
-%	ten0_1 = gather(array_ten);
-%	save('CFL0_1','t0_1','ene0_1','da0_1','dv0_1','P0_1','ten0_1')
-%end
-%
-%if CFLNumber==0.5
-%	t0_5 = gather(array_t);
-%	ene0_5 = gather(array_ene);
-%	da0_5 = gather(array_da);
-%	dv0_5 = gather(array_dv);
-%	P0_5 = gather(array_P);
-%	ten0_5 = gather(array_ten);
-%	save('CFL0_5','t0_5','ene0_5','da0_5','dv0_5','P0_5','ten0_5')
-%end
-%
-%if CFLNumber==1.0
-%	t1 = gather(array_t);
-%	ene1 = gather(array_ene);
-%	da1 = gather(array_da);
-%	dv1 = gather(array_dv);
-%	P1 = gather(array_P);
-%	ten1 = gather(array_ten);
-%	save('CFL1','t1','ene1','da1','dv1','P1','ten1')
-%end
-%
-%
-%
+if CFLNumber==0.01
+	t0_01 = gather(array_t);
+	ene0_01 = gather(array_ene);
+	da0_01 = gather(array_da);
+	dv0_01 = gather(array_dv);
+	P0_01 = gather(array_P);
+	ten0_01 = gather(array_ten);
+	save('CFL0_01','t0_01','ene0_01','da0_01','dv0_01','P0_01','ten0_01')
+end
+
+if CFLNumber==0.25
+	t0_25 = gather(array_t);
+	ene0_25 = gather(array_ene);
+	da0_25 = gather(array_da);
+	dv0_25 = gather(array_dv);
+	P0_25 = gather(array_P);
+	ten0_25 = gather(array_ten);
+	save('CFL0_25','t0_25','ene0_25','da0_25','dv0_25','P0_25','ten0_25')
+end
+
+if CFLNumber==0.05
+	t0_05 = gather(array_t);
+	ene0_05 = gather(array_ene);
+	da0_05 = gather(array_da);
+	dv0_05 = gather(array_dv);
+	P0_05 = gather(array_P);
+	ten0_05 = gather(array_ten);
+	save('CFL0_05','t0_05','ene0_05','da0_05','dv0_05','P0_05','ten0_05')
+end
+
+if CFLNumber==0.1
+	t0_1 = gather(array_t);
+	ene0_1 = gather(array_ene);
+	da0_1 = gather(array_da);
+	dv0_1 = gather(array_dv);
+	P0_1 = gather(array_P);
+	ten0_1 = gather(array_ten);
+	save('CFL0_1','t0_1','ene0_1','da0_1','dv0_1','P0_1','ten0_1')
+end
+
+if CFLNumber==0.5
+	t0_5 = gather(array_t);
+	ene0_5 = gather(array_ene);
+	da0_5 = gather(array_da);
+	dv0_5 = gather(array_dv);
+	P0_5 = gather(array_P);
+	ten0_5 = gather(array_ten);
+	save('CFL0_5','t0_5','ene0_5','da0_5','dv0_5','P0_5','ten0_5')
+end
+
+if CFLNumber==1.0
+	t1 = gather(array_t);
+	ene1 = gather(array_ene);
+	da1 = gather(array_da);
+	dv1 = gather(array_dv);
+	P1 = gather(array_P);
+	ten1 = gather(array_ten);
+	save('CFL1','t1','ene1','da1','dv1','P1','ten1')
+end
+
+
+
 %if GridSize(1)==48
 %	t48 = gather(array_t);
 %	ene48 = gather(array_ene);
@@ -287,16 +296,16 @@ end
 %	ten96 = gather(array_ten);
 %	save('oblate96','t96','ene96','da96','dv96','P96','ten96');
 %end
-
-if GridSize(1)==128
-	t128 = gather(array_t);
-	ene128 = gather(array_ene);
-	da128 = gather(array_da);
-	dv128 = gather(array_dv);
-	P128 = gather(array_P);
-	ten128 = gather(array_ten);
-	save('oblate128','t128','ene128','da128','dv128','P128','ten128');
-end
+%
+%if GridSize(1)==128
+%	t128 = gather(array_t);
+%	ene128 = gather(array_ene);
+%	da128 = gather(array_da);
+%	dv128 = gather(array_dv);
+%	P128 = gather(array_P);
+%	ten128 = gather(array_ten);
+%	save('oblate128','t128','ene128','da128','dv128','P128','ten128');
+%end
 
 
 

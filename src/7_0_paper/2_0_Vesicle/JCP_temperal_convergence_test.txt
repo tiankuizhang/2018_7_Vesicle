@@ -1,0 +1,10 @@
+	 CFL number 	energy equilibrium 	pressure equilibrium 	tension equilibrium
+	  1.00:   	9.81653e+01,  		-1.05978e+02, 		-1.69844e+01
+	  0.50:   	9.81598e+01,  		-1.06029e+02, 		-1.69549e+01
+	  0.25:   	9.81529e+01,  		-1.06044e+02, 		-1.68716e+01
+	  0.10:   	9.81501e+01,  		-1.06071e+02, 		-1.67823e+01
+
+	 CFL number 	energy error 	 order 		pressure error 	 order	tension error 	 order
+	  1.00 		 1.522e-02 	 -     		 9.327e-02 	 - 	 2.020e-01 	 - 
+	  0.50 		 9.738e-03 	    0.64 	 4.216e-02 	  1.15 	 1.725e-01 	  0.23 
+	  0.25 		 2.855e-03 	    1.77 	 2.717e-02 	  0.63 	 8.930e-02 	  0.95 
