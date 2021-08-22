@@ -43,6 +43,7 @@ function [x,y,z,f,a,b,c] = Ellipsoid(Size, reducedVolume, TYPE, ratio)
 		b = a;
 		c = a * cq;
 		f = sqrt(x.^2 ./ a^2 + y.^2 ./ b^2 + z.^2 ./ c^2) - 1;
+		fprintf('olbate:a:%4.5f b:%4.5f c:%4.5f',a,b,c);
 	end
 
 	if TYPE=='Prolate' || TYPE=='P' || TYPE=='p'
@@ -62,6 +63,7 @@ function [x,y,z,f,a,b,c] = Ellipsoid(Size, reducedVolume, TYPE, ratio)
 		b = a * cq;
 		c = b;
 		f = sqrt(x.^2 ./ b^2 + y.^2 ./ c^2 + z.^2 ./ a^2) - 1;
+		fprintf('prolate:a:%4.5f b:%4.5f c:%4.5f',a,b,c);
 	end
 
 
